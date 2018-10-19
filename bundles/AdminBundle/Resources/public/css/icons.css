@@ -1296,3 +1296,15 @@
 .pimcore_icon_icons {
     background: url(/bundles/pimcoreadmin/img/flat-color-icons/library.svg) center center no-repeat !important;
 }
+
+.pimcore_icon_buy {
+    background: url(/bundles/pimcoreadmin/img/flat-color-icons/shopping-cart.svg) center center no-repeat !important;
+}
+
+.pimcore_icon_register {
+    background: url(/bundles/pimcoreadmin/img/flat-color-icons/keys.svg) center center no-repeat !important;
+}
+
+.pimcore_icon_support {
+    background: url(/bundles/pimcoreadmin/img/flat-color-icons/assistant.svg) center center no-repeat !important;
+}

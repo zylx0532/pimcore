@@ -1070,6 +1070,21 @@ pimcore.layout.toolbar = Class.create({
             }
         }
 
+        this.enterpriseMenu = new Ext.menu.Menu({
+            shadow: false,
+            cls: "pimcore_navigation_flyout",
+            items: [{
+                text: t('Buy Enterprise Subscription'),
+                iconCls: 'pimcore_icon_buy'
+            }, {
+                text: t('Register Product'),
+                iconCls: 'pimcore_icon_register'
+            }, {
+                text: t('Contact Premium Support'),
+                iconCls: 'pimcore_icon_support'
+            }]
+        });
+
 
         if (this.fileMenu) {
             Ext.get("pimcore_menu_file").on("mousedown", this.showSubMenu.bind(this.fileMenu));
@@ -1085,6 +1100,9 @@ pimcore.layout.toolbar = Class.create({
         }
         if (this.searchMenu) {
             Ext.get("pimcore_menu_search").on("mousedown", this.showSubMenu.bind(this.searchMenu));
+        }
+        if (this.enterpriseMenu) {
+            Ext.get("pimcore_menu_enterprise").on("mousedown", this.showSubMenu.bind(this.enterpriseMenu));
         }
 
         Ext.each(Ext.query(".pimcore_menu_item"), function (el) {
