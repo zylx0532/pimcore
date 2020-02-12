@@ -22,33 +22,37 @@ use Pimcore\Model;
 /**
  * @method \Pimcore\Model\Version\Listing\Dao getDao()
  * @method Model\Version[] load()
+ * @method Model\Version current()
  */
 class Listing extends Model\Listing\AbstractListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Version
+     * @var Model\Version[]|null
      *
-     * @var array
+     * @deprecated use getter/setter methods or $this->data
      */
-    public $versions = [];
+    protected $versions = null;
 
-    /**
-     * @return array
-     */
-    public function getVersions()
+    public function __construct()
     {
-        return $this->versions;
+        $this->versions = & $this->data;
     }
 
     /**
-     * @param $versions
+     * @return Model\Version[]
+     */
+    public function getVersions()
+    {
+        return $this->getData();
+    }
+
+    /**
+     * @param Model\Version[]|null $versions
      *
      * @return $this
      */
     public function setVersions($versions)
     {
-        $this->versions = $versions;
-
-        return $this;
+        return $this->setData($versions);
     }
 }

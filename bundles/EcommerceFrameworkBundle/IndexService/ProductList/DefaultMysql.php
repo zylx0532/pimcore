@@ -17,19 +17,19 @@ namespace Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList;
 use Monolog\Logger;
 use Pimcore\Bundle\EcommerceFrameworkBundle\CoreExtensions\ObjectData\IndexFieldSelection;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Factory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IMysqlConfig;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\MysqlConfigInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractCategory;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractProduct;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IIndexable;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IndexableInterface;
 use Zend\Paginator\Adapter\AdapterInterface;
 
 /**
  * Implementation of product list which works based on the product index of the online shop framework
  */
-class DefaultMysql implements IProductList
+class DefaultMysql implements ProductListInterface
 {
     /**
-     * @var null|IIndexable[]
+     * @var null|IndexableInterface[]
      */
     protected $products = null;
 
@@ -39,7 +39,7 @@ class DefaultMysql implements IProductList
     protected $tenantName;
 
     /**
-     * @var IMysqlConfig
+     * @var MysqlConfigInterface
      */
     protected $tenantConfig;
 
@@ -51,7 +51,7 @@ class DefaultMysql implements IProductList
     /**
      * @var string
      */
-    protected $variantMode = IProductList::VARIANT_MODE_INCLUDE;
+    protected $variantMode = ProductListInterface::VARIANT_MODE_INCLUDE;
 
     /**
      * @var int
@@ -83,7 +83,7 @@ class DefaultMysql implements IProductList
      */
     protected $logger;
 
-    public function __construct(IMysqlConfig $tenantConfig)
+    public function __construct(MysqlConfigInterface $tenantConfig)
     {
         $this->tenantName = $tenantConfig->getTenantName();
         $this->tenantConfig = $tenantConfig;
@@ -173,7 +173,7 @@ class DefaultMysql implements IProductList
      * Fieldname is optional but highly recommended - needed for resetting condition based on fieldname
      * and exclude functionality in group by results
      *
-     * @param $condition
+     * @param string $condition
      * @param string $fieldname
      */
     public function addQueryCondition($condition, $fieldname = '')
@@ -185,9 +185,7 @@ class DefaultMysql implements IProductList
     /**
      * Reset query condition for fieldname
      *
-     * @param $fieldname
-     *
-     * @return mixed
+     * @param string $fieldname
      */
     public function resetQueryCondition($fieldname)
     {
@@ -243,12 +241,12 @@ class DefaultMysql implements IProductList
     }
 
     /**
-     * @param $orderKey string | array  - either single field name, or array of field names or array of arrays (field name, direction)
+     * @param string|array $orderKey either single field name, or array of field names or array of arrays (field name, direction)
      */
     public function setOrderKey($orderKey)
     {
         $this->products = null;
-        if ($orderKey == IProductList::ORDERKEY_PRICE) {
+        if ($orderKey == ProductListInterface::ORDERKEY_PRICE) {
             $this->orderByPrice = true;
         } else {
             $this->orderByPrice = false;
@@ -379,7 +377,7 @@ class DefaultMysql implements IProductList
         if (count($priceSystemArrays) == 1) {
             $priceSystemName = key($priceSystemArrays);
             $priceSystem = Factory::getInstance()->getPriceSystem($priceSystemName);
-            $objectRaws = $priceSystem->filterProductIds($priceSystemArrays[$raw['priceSystemName']], null, null, $this->order, $this->getOffset(), $this->getLimit());
+            $objectRaws = $priceSystem->filterProductIds($priceSystemArrays[$priceSystemName], null, null, $this->order, $this->getOffset(), $this->getLimit());
         } elseif (count($priceSystemArrays) == 0) {
             //nothing to do
         } else {
@@ -424,7 +422,7 @@ class DefaultMysql implements IProductList
     /**
      * loads element by id
      *
-     * @param $elementId
+     * @param int $elementId
      *
      * @return array|\Pimcore\Model\DataObject\AbstractObject
      */
@@ -485,7 +483,7 @@ class DefaultMysql implements IProductList
     /**
      * loads group by values based on relation fieldname either from local variable if prepared or directly from product index
      *
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -496,10 +494,11 @@ class DefaultMysql implements IProductList
     public function getGroupBySystemValues($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true)
     {
         // not supported with mysql tables
+        return [];
     }
 
     /**
-     * @param $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -521,7 +520,7 @@ class DefaultMysql implements IProductList
     }
 
     /**
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -536,7 +535,7 @@ class DefaultMysql implements IProductList
             $excludedFieldName = null;
         }
         if ($this->conditionPriceFrom === null && $this->conditionPriceTo === null) {
-            return $this->resource->loadGroupByRelationValues($fieldname, $this->buildQueryFromConditions(false, $excludedFieldName, IProductList::VARIANT_MODE_INCLUDE), $countValues);
+            return $this->resource->loadGroupByRelationValues($fieldname, $this->buildQueryFromConditions(false, $excludedFieldName), $countValues);
         } else {
             throw new \Exception('Not supported yet');
         }
@@ -567,18 +566,18 @@ class DefaultMysql implements IProductList
         //variant handling and userspecific conditions
 
         switch ($variantMode) {
-            case IProductList::VARIANT_MODE_INCLUDE_PARENT_OBJECT:
+            case ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT:
 
                 //make sure, that only variant objects are considered
-                $condition .= ' AND o_id != o_virtualProductId ';
+                $condition .= ' AND a.o_id != o_virtualProductId ';
                 break;
 
-            case IProductList::VARIANT_MODE_HIDE:
+            case ProductListInterface::VARIANT_MODE_HIDE:
 
                 $condition .= " AND o_type != 'variant'";
                 break;
 
-            case IProductList::VARIANT_MODE_VARIANTS_ONLY:
+            case ProductListInterface::VARIANT_MODE_VARIANTS_ONLY:
 
                 $condition .= " AND o_type = 'variant'";
                 break;
@@ -595,7 +594,12 @@ class DefaultMysql implements IProductList
             $searchstring = '';
             foreach ($this->queryConditions as $queryConditionPartArray) {
                 foreach ($queryConditionPartArray as $queryConditionPart) {
-                    $searchstring .= '+' . $queryConditionPart . '* ';
+                    //check if there are any mysql special characters in query condition - if so, then quote condition
+                    if (str_replace(['+', '-', '<', '>', '(', ')', '~', '*'], '', $queryConditionPart) != $queryConditionPart) {
+                        $searchstring .= '+"' . $queryConditionPart . '" ';
+                    } else {
+                        $searchstring .= '+' . $queryConditionPart . '* ';
+                    }
                 }
             }
 
@@ -646,14 +650,14 @@ class DefaultMysql implements IProductList
 
     protected function buildOrderBy()
     {
-        if (!empty($this->orderKey) && $this->orderKey !== IProductList::ORDERKEY_PRICE) {
+        if (!empty($this->orderKey) && $this->orderKey !== ProductListInterface::ORDERKEY_PRICE) {
             $orderKeys = $this->orderKey;
             if (!is_array($orderKeys)) {
                 $orderKeys = [$orderKeys];
             }
 
             // add sorting for primary id to prevent mysql paging problem...
-            $orderKeys[] = 'o_id';
+            $orderKeys[] = 'a.o_id';
 
             $directionOrderKeys = [];
             foreach ($orderKeys as $key) {
@@ -672,7 +676,7 @@ class DefaultMysql implements IProductList
                 }
                 $direction = $keyDirection[1];
 
-                if ($this->getVariantMode() == IProductList::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
+                if ($this->getVariantMode() == ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
                     if (strtoupper($this->order) == 'DESC') {
                         $orderByStringArray[] = 'max(' . $key . ') ' . $direction;
                     } else {
@@ -695,7 +699,7 @@ class DefaultMysql implements IProductList
     }
 
     /**
-     * @return IMysqlConfig
+     * @return MysqlConfigInterface
      */
     public function getCurrentTenantConfig()
     {
@@ -706,8 +710,8 @@ class DefaultMysql implements IProductList
      * returns order by statement for simularity calculations based on given fields and object ids
      * returns cosine simularity calculation
      *
-     * @param $fields
-     * @param $objectId
+     * @param array $fields
+     * @param int $objectId
      *
      * @return string
      */
@@ -719,8 +723,8 @@ class DefaultMysql implements IProductList
     /**
      * returns where statement for fulltext search index
      *
-     * @param $fields
-     * @param $searchstring
+     * @param array $fields
+     * @param string $searchstring
      *
      * @return string
      */
@@ -876,7 +880,8 @@ class DefaultMysql implements IProductList
     public function __wakeup()
     {
         if (empty($this->resource)) {
-            $this->resource = new DefaultMysql\Dao($this);
+            $this->logger = \Pimcore::getContainer()->get('monolog.logger.pimcore_ecommerce_sql');
+            $this->resource = new DefaultMysql\Dao($this, $this->logger);
         }
     }
 

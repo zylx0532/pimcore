@@ -17,12 +17,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\AvailabilitySystem;
 
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\ICheckoutable;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\CheckoutableInterface;
 
-class Availability implements IAvailability
+class Availability implements AvailabilityInterface
 {
     /**
-     * @var ICheckoutable
+     * @var CheckoutableInterface
      */
     private $product;
 
@@ -32,18 +32,19 @@ class Availability implements IAvailability
     private $available;
 
     /**
+     * @param CheckoutableInterface $product
      * @param bool $available
      */
-    public function __construct(ICheckoutable $product, bool $available)
+    public function __construct(CheckoutableInterface $product, bool $available)
     {
         $this->product = $product;
         $this->available = $available;
     }
 
     /**
-     * @return ICheckoutable
+     * @return CheckoutableInterface
      */
-    public function getProduct(): ICheckoutable
+    public function getProduct(): CheckoutableInterface
     {
         return $this->product;
     }

@@ -22,37 +22,42 @@ use Pimcore\Model;
 /**
  * @method \Pimcore\Model\DataObject\Classificationstore\KeyConfig\Listing\Dao getDao()
  * @method Model\DataObject\Classificationstore\KeyConfig[] load()
+ * @method Model\DataObject\Classificationstore\KeyConfig current()
+ * @method int getTotalCount()
  */
 class Listing extends Model\Listing\AbstractListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Classificationstore_KeyConfig
+     * @var Model\DataObject\Classificationstore\KeyConfig[]|null
      *
-     * @var array
+     * @deprecated use getter/setter methods or $this->data
      */
-    public $list = [];
+    protected $list = null;
 
     /** @var bool */
     public $includeDisabled;
 
-    /**
-     * @return array
-     */
-    public function getList()
+    public function __construct()
     {
-        return $this->list;
+        $this->list = & $this->data;
     }
 
     /**
-     * @param array
+     * @return Model\DataObject\Classificationstore\KeyConfig[]
+     */
+    public function getList()
+    {
+        return $this->getData();
+    }
+
+    /**
+     * @param Model\DataObject\Classificationstore\KeyConfig[]|null $theList
      *
      * @return $this
      */
     public function setList($theList)
     {
-        $this->list = $theList;
-
-        return $this;
+        return $this->setData($theList);
     }
 
     /**

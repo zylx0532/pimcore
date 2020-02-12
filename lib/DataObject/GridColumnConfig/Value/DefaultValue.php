@@ -18,6 +18,7 @@
 namespace Pimcore\DataObject\GridColumnConfig\Value;
 
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Objectbrick;
 use Pimcore\Model\DataObject\Service;
@@ -26,11 +27,11 @@ use Pimcore\Model\Element\ElementInterface;
 class DefaultValue extends AbstractValue
 {
     /**
-     * @param $object
-     * @param $key
-     * @param null $brickType
-     * @param null $brickKey
-     * @param null $fieldDefinition
+     * @param Concrete $object
+     * @param string $key
+     * @param string|null $brickType
+     * @param string|null $brickKey
+     * @param Data|null $fieldDefinition
      *
      * @return \stdClass
      *
@@ -59,6 +60,7 @@ class DefaultValue extends AbstractValue
             $fieldDefinition = $object->getClass()->getFieldDefinition($key);
 
             if (!$fieldDefinition && ($localizedFields = $object->getClass()->getFieldDefinition('localizedfields'))) {
+                /** @var Data\Localizedfields $localizedFields */
                 $fieldDefinition = $localizedFields->getFieldDefinition($key);
             }
         }
@@ -67,6 +69,10 @@ class DefaultValue extends AbstractValue
             $brickClass = Objectbrick\Definition::getByKey($brickType);
             $context = ['object' => $object, 'outerFieldname' => $key];
             $fieldDefinition = $brickClass->getFieldDefinition($brickKey, $context);
+        }
+
+        if (!$fieldDefinition instanceof Data) {
+            return $this->getDefaultValue($value);
         }
 
         if ($fieldDefinition->isEmpty($value)) {
@@ -88,7 +94,7 @@ class DefaultValue extends AbstractValue
     }
 
     /**
-     * @param $value
+     * @param mixed $value
      *
      * @return \stdClass
      */

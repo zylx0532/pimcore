@@ -15,18 +15,19 @@
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\ElasticSearch;
 
 use Pimcore\Bundle\EcommerceFrameworkBundle\Factory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IElasticSearchConfig;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\IProductList;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\ElasticSearch;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\ElasticSearchConfigInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\ProductListInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractCategory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IIndexable;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IndexableInterface;
 
-abstract class AbstractElasticSearch implements IProductList
+abstract class AbstractElasticSearch implements ProductListInterface
 {
     const LIMIT_UNLIMITED = 'unlimited';
     const INTEGER_MAX_VALUE = 2147483647;     // Elasticsearch Integer.MAX_VALUE is 2^31-1
 
     /**
-     * @var null|IIndexable[]
+     * @var null|IndexableInterface[]
      */
     protected $products = null;
 
@@ -50,7 +51,7 @@ abstract class AbstractElasticSearch implements IProductList
     protected $tenantName;
 
     /**
-     * @var IElasticSearchConfig
+     * @var ElasticSearch
      */
     protected $tenantConfig;
 
@@ -62,7 +63,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * @var string
      */
-    protected $variantMode = IProductList::VARIANT_MODE_INCLUDE;
+    protected $variantMode = ProductListInterface::VARIANT_MODE_INCLUDE;
 
     /**
      * @var int
@@ -176,7 +177,7 @@ abstract class AbstractElasticSearch implements IProductList
         return $this;
     }
 
-    public function __construct(IElasticSearchConfig $tenantConfig)
+    public function __construct(ElasticSearchConfigInterface $tenantConfig)
     {
         $this->tenantName = $tenantConfig->getTenantName();
         $this->tenantConfig = $tenantConfig;
@@ -205,7 +206,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * Returns all products valid for this search
      *
-     * @return IIndexable[]
+     * @return IndexableInterface[]
      */
     public function getProducts()
     {
@@ -256,9 +257,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * Reset condition for fieldname
      *
-     * @param $fieldname
-     *
-     * @return mixed
+     * @param string $fieldname
      */
     public function resetCondition($fieldname)
     {
@@ -275,7 +274,7 @@ abstract class AbstractElasticSearch implements IProductList
      */
     public function addRelationCondition($fieldname, $condition)
     {
-        $this->relationConditions['relations.' . $fieldname][] = $condition;
+        $this->relationConditions[$fieldname][] = $condition;
         $this->preparedGroupByValuesLoaded = false;
         $this->products = null;
     }
@@ -297,7 +296,7 @@ abstract class AbstractElasticSearch implements IProductList
      * Fieldname is optional but highly recommended - needed for resetting condition based on fieldname
      * and exclude functionality in group by results
      *
-     * @param $condition
+     * @param string $condition
      * @param string $fieldname - must be set for elastic search
      */
     public function addQueryCondition($condition, $fieldname = '')
@@ -310,9 +309,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * Reset query condition for fieldname
      *
-     * @param $fieldname
-     *
-     * @return mixed
+     * @param string $fieldname
      */
     public function resetQueryCondition($fieldname)
     {
@@ -358,7 +355,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * sets order direction
      *
-     * @param $order
+     * @param string $order
      *
      * @return void
      */
@@ -381,14 +378,14 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * sets order key
      *
-     * @param $orderKey string | array  - either single field name, or array of field names or array of arrays (field name, direction)
+     * @param string|array $orderKey either single field name, or array of field names or array of arrays (field name, direction)
      *
      * @return void
      */
     public function setOrderKey($orderKey)
     {
         $this->products = null;
-        if ($orderKey == IProductList::ORDERKEY_PRICE) {
+        if ($orderKey == ProductListInterface::ORDERKEY_PRICE) {
             $this->orderByPrice = true;
         } else {
             $this->orderByPrice = false;
@@ -408,7 +405,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * Pass "unlimited" to do da Scroll Request
      *
-     * @param $limit int
+     * @param int $limit
      *
      * @return void
      */
@@ -436,7 +433,7 @@ abstract class AbstractElasticSearch implements IProductList
     }
 
     /**
-     * @param $offset int
+     * @param int $offset
      *
      * @return void
      */
@@ -457,7 +454,7 @@ abstract class AbstractElasticSearch implements IProductList
     }
 
     /**
-     * @param $category
+     * @param AbstractCategory $category
      *
      * @return void
      */
@@ -477,7 +474,7 @@ abstract class AbstractElasticSearch implements IProductList
     }
 
     /**
-     * @param $variantMode
+     * @param string $variantMode
      *
      * @return void
      */
@@ -499,7 +496,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * loads search results from index and returns them
      *
-     * @return IIndexable[]
+     * @return IndexableInterface[]
      */
     public function load()
     {
@@ -629,13 +626,13 @@ abstract class AbstractElasticSearch implements IProductList
         unset($params['body']['sort']);     // don't send the sort parameter, because it doesn't exist with offline sorting
         $params['body']['size'] = 10000;    // won't work with more than 10000 items in the result (elasticsearch limit)
         $params['body']['from'] = 0;
-        $params['body']['fields'] = ['system.priceSystemName'];
+        $params['body']['_source'] = ['system.priceSystemName'];
         $result = $this->sendRequest($params);
         $objectRaws = [];
         if ($result['hits']) {
             $this->totalCount = $result['hits']['total'];
             foreach ($result['hits']['hits'] as $hit) {
-                $objectRaws[] = ['id' => $hit['_id'], 'priceSystemName' => reset($hit['fields']['system.priceSystemName'])];
+                $objectRaws[] = ['id' => $hit['_id'], 'priceSystemName' => $hit['_source']['system']['priceSystemName']];
             }
         }
         $priceSystemArrays = [];
@@ -699,7 +696,7 @@ abstract class AbstractElasticSearch implements IProductList
             $variantMode = $this->getVariantMode();
         }
 
-        if ($variantMode == IProductList::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
+        if ($variantMode == ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
             $params['body']['query']['bool']['must']['has_child']['type'] = self::PRODUCT_TYPE_VARIANT;
             $params['body']['query']['bool']['must']['has_child']['score_mode'] = 'avg';
             $params['body']['query']['bool']['must']['has_child']['query']['bool']['must'] = $queryFilters;
@@ -712,11 +709,11 @@ abstract class AbstractElasticSearch implements IProductList
                 'size' => 100
             ];
         } else {
-            if ($variantMode == IProductList::VARIANT_MODE_VARIANTS_ONLY) {
+            if ($variantMode == ProductListInterface::VARIANT_MODE_VARIANTS_ONLY) {
                 $boolFilters[] = [
                     'term' => ['type' => self::PRODUCT_TYPE_VARIANT]
                 ];
-            } elseif ($variantMode == IProductList::VARIANT_MODE_HIDE) {
+            } elseif ($variantMode == ProductListInterface::VARIANT_MODE_HIDE) {
                 $boolFilters[] = [
                     'term' => ['type' => self::PRODUCT_TYPE_OBJECT]
                 ];
@@ -759,8 +756,8 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * builds relation conditions of user specific query conditions
      *
-     * @param $boolFilters
-     * @param $excludedFieldnames
+     * @param array $boolFilters
+     * @param array $excludedFieldnames
      *
      * @return array
      */
@@ -772,7 +769,7 @@ abstract class AbstractElasticSearch implements IProductList
                     if (is_array($relationCondition)) {
                         $boolFilters[] = $relationCondition;
                     } else {
-                        $boolFilters[] = ['term' => [$fieldname => $relationCondition]];
+                        $boolFilters[] = ['term' => [$this->tenantConfig->getFieldNameMapped($fieldname) => $relationCondition]];
                     }
                 }
             }
@@ -784,8 +781,8 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * builds filter condition of user specific conditions
      *
-     * @param $boolFilters
-     * @param $excludedFieldnames
+     * @param array $boolFilters
+     * @param array $excludedFieldnames
      *
      * @return array
      */
@@ -797,7 +794,7 @@ abstract class AbstractElasticSearch implements IProductList
                     if (is_array($filterCondition)) {
                         $boolFilters[] = $filterCondition;
                     } else {
-                        $boolFilters[] = ['term' => [$this->tenantConfig->getFieldNameMapped($fieldname) => $filterCondition]];
+                        $boolFilters[] = ['term' => [$this->tenantConfig->getFieldNameMapped($fieldname, true) => $filterCondition]];
                     }
                 }
             }
@@ -809,8 +806,8 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * builds query condition of query filters
      *
-     * @param $queryFilters
-     * @param $excludedFieldnames
+     * @param array $queryFilters
+     * @param array $excludedFieldnames
      *
      * @return array
      */
@@ -822,7 +819,20 @@ abstract class AbstractElasticSearch implements IProductList
                     if (is_array($queryCondition)) {
                         $queryFilters[] = $queryCondition;
                     } else {
-                        $queryFilters[] = ['match' => [$this->tenantConfig->getFieldNameMapped($fieldname) => $queryCondition]];
+                        if ($fieldname) {
+                            $queryFilters[] = ['match' => [$this->tenantConfig->getFieldNameMapped($fieldname) => $queryCondition]];
+                        } else {
+                            $fieldnames = $this->tenantConfig->getSearchAttributes();
+                            $mappedFieldnames = [];
+                            foreach ($fieldnames as $searchFieldnames) {
+                                $mappedFieldnames[] = $this->tenantConfig->getFieldNameMapped($searchFieldnames, true);
+                            }
+
+                            $queryFilters[] = ['multi_match' => [
+                                'query' => $queryCondition,
+                                'fields' => $mappedFieldnames
+                            ]];
+                        }
                     }
                 }
             }
@@ -834,9 +844,9 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * loads element by id
      *
-     * @param $elementId
+     * @param int $elementId
      *
-     * @return array|IIndexable
+     * @return array|IndexableInterface
      */
     protected function loadElementById($elementId)
     {
@@ -854,7 +864,31 @@ abstract class AbstractElasticSearch implements IProductList
     public function prepareGroupByValues($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true)
     {
         if ($fieldname) {
-            $this->preparedGroupByValues[$this->tenantConfig->getFieldNameMapped($fieldname)] = ['countValues' => $countValues, 'fieldnameShouldBeExcluded' => $fieldnameShouldBeExcluded];
+            $this->preparedGroupByValues[$this->tenantConfig->getFieldNameMapped($fieldname, true)] = ['countValues' => $countValues, 'fieldnameShouldBeExcluded' => $fieldnameShouldBeExcluded];
+            $this->preparedGroupByValuesLoaded = false;
+        }
+    }
+
+    /**
+     * @param string $fieldname
+     * @param bool $countValues
+     * @param bool $fieldnameShouldBeExcluded
+     * @param array $aggregationConfig
+     *
+     * @throws \Exception
+     */
+    public function prepareGroupByValuesWithConfig($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true, array $aggregationConfig = [])
+    {
+        if ($this->getVariantMode() == ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
+            throw new \Exception('Custom sub aggregations are not supported for variant mode VARIANT_MODE_INCLUDE_PARENT_OBJECT');
+        }
+
+        if ($fieldname) {
+            $this->preparedGroupByValues[$this->tenantConfig->getFieldNameMapped($fieldname, true)] = [
+                'countValues' => $countValues,
+                'fieldnameShouldBeExcluded' => $fieldnameShouldBeExcluded,
+                'aggregationConfig' => $aggregationConfig
+            ];
             $this->preparedGroupByValuesLoaded = false;
         }
     }
@@ -870,7 +904,7 @@ abstract class AbstractElasticSearch implements IProductList
     public function prepareGroupByRelationValues($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true)
     {
         if ($fieldname) {
-            $this->preparedGroupByValues[$this->tenantConfig->getFieldNameMapped($fieldname)] = ['countValues' => $countValues, 'fieldnameShouldBeExcluded' => $fieldnameShouldBeExcluded];
+            $this->preparedGroupByValues[$this->tenantConfig->getFieldNameMapped($fieldname, true)] = ['countValues' => $countValues, 'fieldnameShouldBeExcluded' => $fieldnameShouldBeExcluded];
             $this->preparedGroupByValuesLoaded = false;
         }
     }
@@ -904,7 +938,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * loads group by values based on system either from local variable if prepared or directly from product index
      *
-     * @param $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -920,7 +954,7 @@ abstract class AbstractElasticSearch implements IProductList
     /**
      * loads group by values based on fieldname either from local variable if prepared or directly from product index
      *
-     * @param $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -930,13 +964,13 @@ abstract class AbstractElasticSearch implements IProductList
      */
     public function getGroupByValues($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true)
     {
-        return $this->doGetGroupByValues($this->tenantConfig->getFieldNameMapped($fieldname), $countValues, $fieldnameShouldBeExcluded);
+        return $this->doGetGroupByValues($this->tenantConfig->getFieldNameMapped($fieldname, true), $countValues, $fieldnameShouldBeExcluded);
     }
 
     /**
      * loads group by values based on relation fieldname either from local variable if prepared or directly from product index
      *
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -946,13 +980,13 @@ abstract class AbstractElasticSearch implements IProductList
      */
     public function getGroupByRelationValues($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true)
     {
-        return $this->doGetGroupByValues($this->tenantConfig->getFieldNameMapped($fieldname), $countValues, $fieldnameShouldBeExcluded);
+        return $this->doGetGroupByValues($this->tenantConfig->getFieldNameMapped($fieldname, true), $countValues, $fieldnameShouldBeExcluded);
     }
 
     /**
      * checks if group by values are loaded and returns them
      *
-     * @param $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded
      *
@@ -992,9 +1026,11 @@ abstract class AbstractElasticSearch implements IProductList
     {
         // create general filters and queries
         $toExcludeFieldnames = [];
+        /** @var ElasticSearch $tenantConfig */
+        $tenantConfig = $this->getTenantConfig();
         foreach ($this->preparedGroupByValues as $fieldname => $config) {
             if ($config['fieldnameShouldBeExcluded']) {
-                $toExcludeFieldnames[$this->getTenantConfig()->getReverseMappedFieldName($fieldname)] = $fieldname;
+                $toExcludeFieldnames[$tenantConfig->getReverseMappedFieldName($fieldname)] = $fieldname;
             }
         }
 
@@ -1039,6 +1075,14 @@ abstract class AbstractElasticSearch implements IProductList
             //relation conditions
             $specificFilters = $this->buildRelationConditions($specificFilters, array_merge($filteredFieldnames, [$shortFieldname => $shortFieldname]));
 
+            if (!empty($config['aggregationConfig'])) {
+                $aggregation = $config['aggregationConfig'];
+            } else {
+                $aggregation = [
+                    'terms' => ['field' => $fieldname, 'size' => self::INTEGER_MAX_VALUE, 'order' => ['_key' => 'asc']]
+                ];
+            }
+
             if ($specificFilters) {
                 $aggregations[$fieldname] = [
                     'filter' => [
@@ -1047,25 +1091,21 @@ abstract class AbstractElasticSearch implements IProductList
                         ]
                     ],
                     'aggs' => [
-                        $fieldname => [
-                            'terms' => ['field' => $fieldname, 'size' => self::INTEGER_MAX_VALUE, 'order' => ['_key' => 'asc' ]]
-                        ]
+                        $fieldname => $aggregation
                     ]
                 ];
 
                 //necessary to calculate correct counts of search results for filter values
-                if ($this->getVariantMode() == IProductList::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
+                if ($this->getVariantMode() == ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
                     $aggregations[$fieldname]['aggs'][$fieldname]['aggs'] = [
                         'objectCount' => ['cardinality' => ['field' => 'system.o_virtualProductId']]
                     ];
                 }
             } else {
-                $aggregations[$fieldname] = [
-                    'terms' => ['field' => $fieldname, 'size' => self::INTEGER_MAX_VALUE, 'order' => ['_key' => 'asc' ]]
-                ];
+                $aggregations[$fieldname] = $aggregation;
 
                 //necessary to calculate correct counts of search results for filter values
-                if ($this->getVariantMode() == IProductList::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
+                if ($this->getVariantMode() == ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
                     $aggregations[$fieldname]['aggs'] = [
                         'objectCount' => ['cardinality' => ['field' => 'system.o_virtualProductId']]
                     ];
@@ -1083,8 +1123,8 @@ abstract class AbstractElasticSearch implements IProductList
 
             // build query for request
             $variantModeForAggregations = $this->getVariantMode();
-            if ($this->getVariantMode() == IProductList::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
-                $variantModeForAggregations = IProductList::VARIANT_MODE_VARIANTS_ONLY;
+            if ($this->getVariantMode() == ProductListInterface::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
+                $variantModeForAggregations = ProductListInterface::VARIANT_MODE_VARIANTS_ONLY;
             }
 
             // build query for request
@@ -1095,11 +1135,7 @@ abstract class AbstractElasticSearch implements IProductList
 
             if ($result['aggregations']) {
                 foreach ($result['aggregations'] as $fieldname => $aggregation) {
-                    if ($aggregation['buckets']) {
-                        $buckets = $aggregation['buckets'];
-                    } else {
-                        $buckets = $aggregation[$fieldname]['buckets'];
-                    }
+                    $buckets = $this->searchForBuckets($aggregation);
 
                     $groupByValueResult = [];
                     if ($buckets) {
@@ -1107,7 +1143,8 @@ abstract class AbstractElasticSearch implements IProductList
                             if ($this->getVariantMode() == self::VARIANT_MODE_INCLUDE_PARENT_OBJECT) {
                                 $groupByValueResult[] = ['value' => $bucket['key'], 'count' => $bucket['objectCount']['value']];
                             } else {
-                                $groupByValueResult[] = ['value' => $bucket['key'], 'count' => $bucket['doc_count']];
+                                $data = $this->convertBucketValues($bucket);
+                                $groupByValueResult[] = $data;
                             }
                         }
                     }
@@ -1123,7 +1160,70 @@ abstract class AbstractElasticSearch implements IProductList
     }
 
     /**
-     * @return IElasticSearchConfig
+     * Deep search for buckets in result aggregations array, as the structure of the result array
+     * may differ dependent on the used aggregations (i.e. date filters, nested aggr, ...)
+     *
+     * @param array $aggregations
+     *
+     * @return array
+     */
+    protected function searchForBuckets(array $aggregations)
+    {
+        if (array_key_exists('buckets', $aggregations)) {
+            return $aggregations['buckets'];
+        }
+
+        // usually the relevant key is at the very end of the array so we reverse the order
+        $aggregations = array_reverse($aggregations, true);
+
+        foreach ($aggregations as $aggregation) {
+            if (!is_array($aggregation)) {
+                continue;
+            }
+            $buckets = $this->searchForBuckets($aggregation);
+            if (!empty($buckets)) {
+                return $buckets;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Recursively convert aggregation data (sub-aggregations possible)
+     *
+     * @param array $bucket
+     *
+     * @return array
+     */
+    protected function convertBucketValues(array $bucket)
+    {
+        $data = [
+            'value' => $bucket['key'],
+            'count' => $bucket['doc_count']
+        ];
+
+        unset($bucket['key']);
+        unset($bucket['doc_count']);
+
+        if (!empty($bucket)) {
+            $subAggregationField = array_key_first($bucket);
+            $subAggregationBuckets = $bucket[$subAggregationField];
+
+            if (array_key_exists('key_as_string', $bucket)) {          // date aggregations
+                $data['key_as_string'] = $bucket['key_as_string'];
+            } elseif (is_array($subAggregationBuckets['buckets'])) {        // sub aggregations
+                foreach ($subAggregationBuckets['buckets'] as $bucket) {
+                    $data[$subAggregationField][] = $this->convertBucketValues($bucket);
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return ElasticSearchConfigInterface
      */
     public function getTenantConfig()
     {
@@ -1140,9 +1240,10 @@ abstract class AbstractElasticSearch implements IProductList
     protected function sendRequest(array $params)
     {
         /**
-         * @var $esClient \Elasticsearch\Client
+         * @var \Elasticsearch\Client $esClient
          */
         $esClient = $this->tenantConfig->getTenantWorker()->getElasticSearchClient();
+        $result = [];
 
         if ($esClient instanceof \Elasticsearch\Client) {
             if ($this->doScrollRequest) {

@@ -14,16 +14,16 @@
 
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager;
 
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\ICheckoutable;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\IPrice;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\IPriceInfo as PriceSystemIPriceInfo;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\IPriceSystem;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\CheckoutableInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\PriceInfoInterface as PriceSystemPriceInfoInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\PriceInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\PriceSystemInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Type\Decimal;
 
-class PriceInfo implements IPriceInfo
+class PriceInfo implements PriceInfoInterface
 {
     /**
-     * @var IPriceInfo
+     * @var PriceInfoInterface
      */
     protected $priceInfo;
 
@@ -33,12 +33,12 @@ class PriceInfo implements IPriceInfo
     protected $amount;
 
     /**
-     * @var IRule[]
+     * @var RuleInterface[]
      */
     protected $rules = [];
 
     /**
-     * @var IRule[]
+     * @var RuleInterface[]
      */
     protected $validRules = null;
 
@@ -53,14 +53,14 @@ class PriceInfo implements IPriceInfo
     protected $priceEnvironmentHash = null;
 
     /**
-     * @var IEnvironment
+     * @var EnvironmentInterface
      */
     protected $environment;
 
     /**
      * @inheritdoc
      */
-    public function __construct(PriceSystemIPriceInfo $priceInfo, IEnvironment $environment)
+    public function __construct(PriceSystemPriceInfoInterface $priceInfo, EnvironmentInterface $environment)
     {
         $this->amount = Decimal::create(0);
         $this->priceInfo = $priceInfo;
@@ -70,15 +70,17 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function addRule(IRule $rule)
+    public function addRule(RuleInterface $rule)
     {
         $this->rules[] = $rule;
+
+        return $this;
     }
 
     /**
      * @inheritdoc
      */
-    public function getEnvironment(): IEnvironment
+    public function getEnvironment(): EnvironmentInterface
     {
         return $this->environment;
     }
@@ -86,7 +88,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function setEnvironment(IEnvironment $environment)
+    public function setEnvironment(EnvironmentInterface $environment)
     {
         $this->environment = $environment;
 
@@ -141,7 +143,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function getPrice(): IPrice
+    public function getPrice(): PriceInterface
     {
         $price = clone $this->priceInfo->getPrice();
         if ($price == null) {
@@ -153,7 +155,7 @@ class PriceInfo implements IPriceInfo
             $env = $this->getEnvironment();
 
             foreach ($this->getRules() as $rule) {
-                /* @var IRule $rule */
+                /* @var RuleInterface $rule */
                 $env->setRule($rule);
 
                 // execute rule
@@ -166,7 +168,7 @@ class PriceInfo implements IPriceInfo
             }
         }
 
-        $price->setAmount($this->getAmount(), IPrice::PRICE_MODE_GROSS, true);
+        $price->setAmount($this->getAmount(), PriceInterface::PRICE_MODE_GROSS, true);
 
         return $price;
     }
@@ -174,12 +176,12 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function getTotalPrice(): IPrice
+    public function getTotalPrice(): PriceInterface
     {
         $price = clone $this->priceInfo->getPrice();
         $price->setAmount(
             $this->getPrice()->getAmount()->mul($this->getQuantity()),
-            IPrice::PRICE_MODE_GROSS,
+            PriceInterface::PRICE_MODE_GROSS,
             true
         );
 
@@ -213,7 +215,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function setPriceSystem(IPriceSystem $priceSystem)
+    public function setPriceSystem(PriceSystemInterface $priceSystem)
     {
         $this->priceInfo->setPriceSystem($priceSystem);
 
@@ -223,7 +225,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function setProduct(ICheckoutable $product)
+    public function setProduct(CheckoutableInterface $product)
     {
         $this->priceInfo->setProduct($product);
 
@@ -259,8 +261,8 @@ class PriceInfo implements IPriceInfo
     /**
      * loop through any other calls
      *
-     * @param $name
-     * @param $arguments
+     * @param string $name
+     * @param array $arguments
      *
      * @return mixed
      */
@@ -272,7 +274,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function getOriginalPrice(): IPrice
+    public function getOriginalPrice(): PriceInterface
     {
         return $this->priceInfo->getPrice();
     }
@@ -280,7 +282,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function getOriginalTotalPrice(): IPrice
+    public function getOriginalTotalPrice(): PriceInterface
     {
         return $this->priceInfo->getTotalPrice();
     }
@@ -298,7 +300,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function getDiscount(): IPrice
+    public function getDiscount(): PriceInterface
     {
         $discount = $this->getPrice()->getAmount()->sub($this->getOriginalPrice()->getAmount());
 
@@ -311,7 +313,7 @@ class PriceInfo implements IPriceInfo
     /**
      * @inheritdoc
      */
-    public function getTotalDiscount(): IPrice
+    public function getTotalDiscount(): PriceInterface
     {
         $discount = $this->getTotalPrice()->getAmount()->sub($this->getOriginalTotalPrice()->getAmount());
 

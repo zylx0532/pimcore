@@ -22,33 +22,37 @@ use Pimcore\Model;
 /**
  * @method \Pimcore\Model\Site\Listing\Dao getDao()
  * @method Model\Site[] load()
+ * @method Model\Site current()
  */
 class Listing extends Model\Listing\AbstractListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Staticroute
+     * @var Model\Site[]|null
      *
-     * @var array
+     * @deprecated use getter/setter methods or $this->data
      */
-    public $sites = [];
+    protected $sites = null;
 
-    /**
-     * @return array
-     */
-    public function getSites()
+    public function __construct()
     {
-        return $this->sites;
+        $this->sites = & $this->data;
     }
 
     /**
-     * @param array $sites
+     * @return Model\Site[]
+     */
+    public function getSites()
+    {
+        return $this->getData();
+    }
+
+    /**
+     * @param Model\Site[]|null $sites
      *
      * @return $this
      */
     public function setSites($sites)
     {
-        $this->sites = $sites;
-
-        return $this;
+        return $this->setData($sites);
     }
 }

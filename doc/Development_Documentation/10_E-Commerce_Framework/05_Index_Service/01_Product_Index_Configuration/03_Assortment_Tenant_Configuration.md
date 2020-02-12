@@ -16,13 +16,13 @@ of saving products, since all *Product Indices* need to be updated on every save
 By default the system always uses one heavy-weight tenant (= `DefaultMysql`), but the default tenant can be disabled. 
 
 
-### Configuration of Assortment Tenants
+## Assortment Tenants
 For setting up an Assortment Tenant, following steps are necessary: 
 
 - **Implementation of a Tenant Config:**
 The Tenant Config class is the central configuration of an assortment tenant, defines which products are available for 
 the tenant and provides the connection to the used *Product Index* implementation. It needs to implement 
-[`Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IConfig`](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IndexService/Config/IConfig.php). 
+[`Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\ConfigInterface`](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IndexService/Config/ConfigInterface.php). 
 For detailed information see in-source documentation of the interface. Following implementations are provided by the framework 
 and may be extended:
    - `Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\DefaultMysql`: Provides a simple mysql implementation of 
@@ -42,14 +42,14 @@ attributes. Depending on the *Product Index* implementation, additional configur
 
 
 ### Setting current Assortment Tenant for Frontend
-The [E-Commerce Framework Environment](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IEnvironment.php#L22-L22) 
+The [E-Commerce Framework Environment](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/EnvironmentInterface.php#L22-L22) 
 provides following methods to set the current Assortment Tenant when working with *Product Lists* in Code: 
 ```php
 <?php
     /**
      * sets current assortment tenant which is used for indexing and product lists
      *
-     * @param $tenant string
+     * @param string $tenant
      * @return mixed
      */
     public function setCurrentAssortmentTenant($tenant);
@@ -64,7 +64,7 @@ provides following methods to set the current Assortment Tenant when working wit
     /**
      * sets current assortment sub tenant which is used for indexing and product lists
      *
-     * @param $subTenant string
+     * @param string $subTenant
      * @return mixed
      */
     public function setCurrentAssortmentSubTenant($subTenant);
@@ -96,13 +96,14 @@ The Index Service provides the corresponding Product List implementation based o
   //doing stuff with product list
 ```
 
-
-### Implementing an Assortment Subtenant
+## Assortment Subtenants
 Subtenants are light-weight tenants, which share the same Product Index with the same attributes as their parent 
 assortment tenant.
+
+### Implementing an Assortment Subtenant for MySQL
 The mapping which product is assigned to with subtenant is done with an additional mapping table. The necessary 
 joins and conditions are implemented within additional methods within 
-[`Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IMysqlConfig`](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IndexService/Config/IMysqlConfig.php): 
+[`Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\MysqlConfigInterface`](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IndexService/Config/MysqlConfigInterface.php): 
  
 ```php
     /**
@@ -133,8 +134,8 @@ In order to populate the additional mapping data, also following methods have to
     /**
      * in case of subtenants returns a data structure containing all sub tenants
      *
-     * @param IIndexable $object
-     * @param null $subObjectId
+     * @param IndexableInterface $object
+     * @param int|null $subObjectId
      *
      * @return mixed $subTenantData
      */
@@ -154,4 +155,26 @@ In order to populate the additional mapping data, also following methods have to
 
 For an complete example have a look at the [sample implementation](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IndexService/Config/DefaultMysqlSubTenantConfig.php).
 
-> Note: This is currently only implemented for mysql based Product Index Implementations. 
+
+### Implementing an Assortment Subtenant for Elastic Search
+
+In order to populate the additional mapping data, the following method has to be implemented: 
+
+```php
+    /**
+     * in case of subtenants returns a data structure containing all sub tenants
+     *
+     * @param IndexableInterface $object
+     * @param int|null $subObjectId
+     *
+     * @return array $subTenantData
+     */
+    public function prepareSubTenantEntries(IIndexable $object, $subObjectId = null);
+
+```
+
+For an complete example have a look at the [sample implementation](https://github.com/pimcore/pimcore/blob/master/bundles/EcommerceFrameworkBundle/IndexService/Config/DefaultElasticSearchSubTenantConfig.php).
+
+---
+
+> Note: This is currently only implemented for MySQL and Elastic Search based product index implementations. 

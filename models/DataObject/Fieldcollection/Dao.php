@@ -21,8 +21,8 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CustomResourcePersistingInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data\LazyLoadingSupportInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ResourcePersistenceAwareInterface;
-use Pimcore\Tool;
 
 /**
  * @property \Pimcore\Model\DataObject\Fieldcollection $model
@@ -31,9 +31,9 @@ class Dao extends Model\Dao\AbstractDao
 {
     /**
      * @param DataObject\Concrete $object
-     * @param $params mixed
+     * @param array $params
      *
-     * @return whether an insert should be done
+     * @return array
      */
     public function save(DataObject\Concrete $object, $params = [])
     {
@@ -47,13 +47,12 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function load(DataObject\Concrete $object)
     {
+        /** @var DataObject\ClassDefinition\Data\Fieldcollections $fieldDef */
         $fieldDef = $object->getClass()->getFieldDefinition($this->model->getFieldname(), ['suppressEnrichment' => true]);
         $values = [];
 
         foreach ($fieldDef->getAllowedTypes() as $type) {
-            try {
-                $definition = DataObject\Fieldcollection\Definition::getByKey($type);
-            } catch (\Exception $e) {
+            if (!$definition = DataObject\Fieldcollection\Definition::getByKey($type)) {
                 continue;
             }
 
@@ -70,19 +69,16 @@ class Dao extends Model\Dao\AbstractDao
             $modelFactory = \Pimcore::getContainer()->get('pimcore.model.factory');
 
             foreach ($results as $result) {
+                /** @var DataObject\Fieldcollection\Data\AbstractData $collection */
                 $collection = $modelFactory->build($collectionClass);
                 $collection->setIndex($result['index']);
                 $collection->setFieldname($result['fieldname']);
                 $collection->setObject($object);
 
                 foreach ($fieldDefinitions as $key => $fd) {
-                    if ($fd instanceof CustomResourcePersistingInterface || method_exists($fd, 'load')) {
-                        if (!$fd instanceof CustomResourcePersistingInterface) {
-                            Tool::triggerMissingInterfaceDeprecation(get_class($fd), 'load', CustomResourcePersistingInterface::class);
-                        }
-
+                    if ($fd instanceof CustomResourcePersistingInterface) {
                         $doLoad = true;
-                        if ($fd instanceof DataObject\ClassDefinition\Data\Relations\AbstractRelations) {
+                        if ($fd instanceof LazyLoadingSupportInterface) {
                             if (!DataObject\Concrete::isLazyLoadingDisabled() && $fd->getLazyLoading()) {
                                 $doLoad = false;
                             }
@@ -111,10 +107,7 @@ class Dao extends Model\Dao\AbstractDao
                             }
                         }
                     }
-                    if ($fd instanceof ResourcePersistenceAwareInterface || method_exists($fd, 'getDataFromResource')) {
-                        if (!$fd instanceof ResourcePersistenceAwareInterface) {
-                            Tool::triggerMissingInterfaceDeprecation(get_class($fd), 'getDataFromResource', ResourcePersistenceAwareInterface::class);
-                        }
+                    if ($fd instanceof ResourcePersistenceAwareInterface) {
                         if (is_array($fd->getColumnType())) {
                             $multidata = [];
                             foreach ($fd->getColumnType() as $fkey => $fvalue) {
@@ -145,21 +138,20 @@ class Dao extends Model\Dao\AbstractDao
 
     /**
      * @param DataObject\Concrete $object
-     * @param $saveMode true if called from save method
+     * @param bool $saveMode true if called from save method
      *
-     * @return whether relational data should be inserted or not
+     * @return array
      */
     public function delete(DataObject\Concrete $object, $saveMode = false)
     {
         // empty or create all relevant tables
+
+        /** @var DataObject\ClassDefinition\Data\Fieldcollections $fieldDef */
         $fieldDef = $object->getClass()->getFieldDefinition($this->model->getFieldname(), ['suppressEnrichment' => true]);
         $hasLocalizedFields = false;
 
         foreach ($fieldDef->getAllowedTypes() as $type) {
-            try {
-                /** @var $definition Definition */
-                $definition = DataObject\Fieldcollection\Definition::getByKey($type);
-            } catch (\Exception $e) {
+            if (!$definition = DataObject\Fieldcollection\Definition::getByKey($type)) {
                 continue;
             }
 
@@ -192,7 +184,7 @@ class Dao extends Model\Dao\AbstractDao
                 }
             }
 
-            $childDefinitions = $definition->getFielddefinitions(['suppressEnrichment' => true]);
+            $childDefinitions = $definition->getFieldDefinitions(['suppressEnrichment' => true]);
 
             if (is_array($childDefinitions)) {
                 foreach ($childDefinitions as $fd) {
@@ -204,13 +196,11 @@ class Dao extends Model\Dao\AbstractDao
                         }
                     }
 
-                    if ($fd instanceof CustomResourcePersistingInterface || method_exists($fd, 'delete')) {
-                        if (!$fd instanceof CustomResourcePersistingInterface) {
-                            Tool::triggerMissingInterfaceDeprecation(get_class($fd), 'delete', CustomResourcePersistingInterface::class);
-                        }
+                    if ($fd instanceof CustomResourcePersistingInterface) {
                         $fd->delete(
                             $object,
                             [
+                                'isUpdate' => $saveMode,
                                 'context' => [
                                     'containerType' => 'fieldcollection',
                                     'containerKey' => $type,

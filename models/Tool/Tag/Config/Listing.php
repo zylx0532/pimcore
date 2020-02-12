@@ -21,24 +21,30 @@ use Pimcore\Model;
 
 /**
  * @method \Pimcore\Model\Tool\Tag\Config\Listing\Dao getDao()
+ * @method  \Pimcore\Model\Tool\Tag\Config[] load()
+ * @method int getTotalCount()
  */
 class Listing extends Model\Listing\JsonListing
 {
     /**
-     * @var array
+     * @var Model\Tool\Tag\Config[]|null
      */
-    public $tags = [];
+    protected $tags = null;
 
     /**
-     * @return array
+     * @return Model\Tool\Tag\Config[]
      */
     public function getTags()
     {
+        if ($this->tags === null) {
+            $this->getDao()->load();
+        }
+
         return $this->tags;
     }
 
     /**
-     * @param $tags
+     * @param Model\Tool\Tag\Config[] $tags
      *
      * @return $this
      */

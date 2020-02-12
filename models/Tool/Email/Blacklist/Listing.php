@@ -21,34 +21,40 @@ use Pimcore\Model;
 
 /**
  * @method \Pimcore\Model\Tool\Email\Blacklist\Listing\Dao getDao()
+ * @method void delete()*
  * @method Model\Tool\Email\Blacklist[] load()
+ * @method Model\Tool\Email\Blacklist current()
+ * @method int getTotalCount()
  */
 class Listing extends Model\Listing\AbstractListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Staticroute
+     * @var Model\Tool\Email\Blacklist[]|null
      *
-     * @var array
+     * @deprecated use getter/setter methods or $this->data
      */
-    public $items = [];
+    protected $items = null;
+
+    public function __construct()
+    {
+        $this->items = & $this->data;
+    }
 
     /**
-     * @param $items
+     * @param Model\Tool\Email\Blacklist[]|null $items
      *
      * @return $this
      */
     public function setItems($items)
     {
-        $this->items = $items;
-
-        return $this;
+        return $this->setData($items);
     }
 
     /**
-     * @return array
+     * @return Model\Tool\Email\Blacklist[]
      */
     public function getItems()
     {
-        return $this->items;
+        return $this->getData();
     }
 }

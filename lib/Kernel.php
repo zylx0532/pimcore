@@ -25,7 +25,6 @@ use Pimcore\Extension\Bundle\Config\StateConfig;
 use Pimcore\HttpKernel\BundleCollection\BundleCollection;
 use Pimcore\HttpKernel\BundleCollection\ItemInterface;
 use Pimcore\HttpKernel\BundleCollection\LazyLoadedItem;
-use Pimcore\HttpKernel\Config\SystemConfigParamResource;
 use Presta\SitemapBundle\PrestaSitemapBundle;
 use Scheb\TwoFactorBundle\SchebTwoFactorBundle;
 use Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle;
@@ -95,14 +94,15 @@ abstract class Kernel extends SymfonyKernel
      */
     public function registerContainerConfiguration(LoaderInterface $loader)
     {
-        $loader->load(function (ContainerBuilder $container) use ($loader) {
-            // add system.php as container resource and extract config values into params
-            $resource = new SystemConfigParamResource($container);
-            $resource->register();
-            $resource->setParameters();
-
+        $loader->load(function (ContainerBuilder $container) {
             $this->registerExtensionConfigFileResources($container);
         });
+
+        //load system configuration
+        $systemConfigFile = Config::locateConfigFile('system.yml');
+        if (file_exists($systemConfigFile)) {
+            $loader->load($systemConfigFile);
+        }
 
         $bundleConfigLocator = new BundleConfigLocator($this);
         foreach ($bundleConfigLocator->locate('config') as $bundleConfig) {
@@ -155,9 +155,6 @@ abstract class Kernel extends SymfonyKernel
 
         // handle system requirements
         $this->setSystemRequirements();
-
-        // force load config
-        \Pimcore::initConfiguration();
 
         // initialize extension manager config
         $this->extensionConfig = new Extension\Config();
@@ -357,8 +354,6 @@ abstract class Kernel extends SymfonyKernel
         if (php_sapi_name() === 'cli') {
             $maxExecutionTime = 0;
         }
-
-        error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
 
         //@ini_set("memory_limit", "1024M");
         @ini_set('max_execution_time', $maxExecutionTime);

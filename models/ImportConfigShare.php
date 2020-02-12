@@ -18,7 +18,7 @@
 namespace Pimcore\Model;
 
 /**
- * @method \Pimcore\Model\Version\Dao getDao()
+ * @method \Pimcore\Model\ImportConfigShare\Dao getDao()
  */
 class ImportConfigShare extends AbstractModel
 {
@@ -33,8 +33,8 @@ class ImportConfigShare extends AbstractModel
     public $sharedWithUserId;
 
     /**
-     * @param $importConfigId
-     * @param $sharedWithUserId
+     * @param int $importConfigId
+     * @param int $sharedWithUserId
      *
      * @return ImportConfigShare
      */

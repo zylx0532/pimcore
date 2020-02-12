@@ -21,6 +21,8 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 
 class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryResourcePersistenceAwareInterface
 {
+    use Model\DataObject\Traits\DefaultValueTrait;
+
     use Model\DataObject\Traits\SimpleComparisonTrait;
     use Extension\ColumnType {
         getColumnType as public genericGetColumnType;
@@ -149,13 +151,15 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @return int
+     * @return int|null
      */
     public function getDefaultValue()
     {
         if ($this->defaultValue !== null) {
             return $this->toNumeric($this->defaultValue);
         }
+
+        return null;
     }
 
     /**
@@ -372,6 +376,8 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
      */
     public function getDataForResource($data, $object = null, $params = [])
     {
+        $data = $this->handleDefaultValue($data, $object, $params);
+
         if (is_numeric($data)) {
             return $data;
         }
@@ -408,6 +414,8 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
      */
     public function getDataForQueryResource($data, $object = null, $params = [])
     {
+        //TODO same fallback as above
+
         return $this->getDataForResource($data, $object, $params);
     }
 
@@ -443,7 +451,7 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
      * @see Data::getVersionPreview
      *
      * @param float|int|string $data
-     * @param null|Model\DataObject\AbstractObject $object
+     * @param null|Model\DataObject\Concrete $object
      * @param mixed $params
      *
      * @return float|int|string
@@ -468,7 +476,7 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
         }
 
         if (!$this->isEmpty($data) && !is_numeric($data)) {
-            throw new Model\Element\ValidationException('invalid numeric data [' . $data . ']');
+            throw new Model\Element\ValidationException('field ['.$this->getName().' ] - invalid numeric data [' . $data . '] ');
         }
 
         if (!$this->isEmpty($data) && !$omitMandatoryCheck) {
@@ -517,20 +525,20 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
      * fills object field data values from CSV Import String
      *
      * @param string $importValue
-     * @param null|Model\DataObject\AbstractObject $object
+     * @param null|Model\DataObject\Concrete $object
      * @param mixed $params
      *
      * @return float|int|string
      */
     public function getFromCsvImport($importValue, $object = null, $params = [])
     {
-        $value = $this->toNumeric(str_replace(',', '.', $importValue));
+        $value = $this->toNumeric($importValue);
 
         return $value;
     }
 
     /** True if change is allowed in edit mode.
-     * @param string $object
+     * @param Model\DataObject\Concrete $object
      * @param mixed $params
      *
      * @return bool
@@ -541,7 +549,7 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @param $data
+     * @param string|null $data
      *
      * @return bool
      */
@@ -551,17 +559,19 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
     }
 
     /**
-     * @param $value
+     * @param string $value
      *
      * @return float|int|string
      */
     protected function toNumeric($value)
     {
+        $value = str_replace(',', '.', (string) $value);
+
         if ($this->isDecimalType()) {
-            return (string) $value;
+            return $value;
         }
 
-        if (strpos((string) $value, '.') === false) {
+        if (strpos($value, '.') === false) {
             return (int) $value;
         }
 
@@ -582,5 +592,21 @@ class Numeric extends Data implements ResourcePersistenceAwareInterface, QueryRe
         }
 
         return $data;
+    }
+
+    public function isFilterable(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @param Model\DataObject\Concrete $object
+     * @param array $context
+     *
+     * @return null|int
+     */
+    protected function doGetDefaultValue($object, $context = [])
+    {
+        return $this->getDefaultValue() ?? null;
     }
 }

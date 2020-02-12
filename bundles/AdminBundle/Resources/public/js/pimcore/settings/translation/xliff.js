@@ -61,7 +61,8 @@ pimcore.settings.translation.xliff = Class.create({
                 "id",
                 "path",
                 "type",
-                "children"
+                "children",
+                "relations"
             ]
         });
 
@@ -82,7 +83,12 @@ pimcore.settings.translation.xliff = Class.create({
                     Ext.create('Ext.grid.column.Check', {
                         text: t("children"),
                         dataIndex: "children",
-                        width: 50
+                        width: 70
+                    }),
+                    Ext.create('Ext.grid.column.Check', {
+                        text: t("relations"),
+                        dataIndex: "relations",
+                        width: 100
                     }),
                     {
                         xtype: 'actioncolumn',
@@ -102,8 +108,8 @@ pimcore.settings.translation.xliff = Class.create({
                 items: [
                     {
                         xtype: "tbspacer",
-                        width: 20,
-                        height: 16,
+                        width: 24,
+                        height: 24,
                         cls: "pimcore_icon_droptarget"
                     },
                     t("elements_to_export"),
@@ -128,7 +134,8 @@ pimcore.settings.translation.xliff = Class.create({
                                             id: items[i].id,
                                             path: items[i].fullpath,
                                             type: items[i].type,
-                                            children: true
+                                            children: true,
+                                            relations: false
                                         });
                                     }
                                 }
@@ -175,7 +182,8 @@ pimcore.settings.translation.xliff = Class.create({
                                 id: data.id,
                                 path: data.path,
                                 type: data.elementType,
-                                children: true
+                                children: true,
+                                relations: false
                             });
                             return true;
                         }

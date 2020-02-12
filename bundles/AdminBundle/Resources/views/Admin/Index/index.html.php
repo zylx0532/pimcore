@@ -90,14 +90,14 @@ $user      = $userProxy->getUser();
         var pimcore = {}; // namespace
 
         // hide symfony toolbar by default
-        var symfonyToolbarKey = 'sf2/profiler/toolbar/displayState';
+        var symfonyToolbarKey = 'symfony/profiler/toolbar/displayState';
         if(!window.localStorage.getItem(symfonyToolbarKey)) {
             window.localStorage.setItem(symfonyToolbarKey, 'none');
         }
     </script>
 </head>
 
-<body>
+<body class="pimcore_version_6">
 
 <div id="pimcore_loading">
     <div class="spinner">
@@ -116,7 +116,7 @@ $runtimePerspective = \Pimcore\Config::getRuntimePerspective($user);
         <ul>
             <?php if (\Pimcore\Config::inPerspective($runtimePerspective, "file")) { ?>
                 <li id="pimcore_menu_file" data-menu-tooltip="<?= $this->translate("file") ?>" class="pimcore_menu_item pimcore_menu_needs_children">
-                    <img src="/bundles/pimcoreadmin/img/material-icons/outline-bubble_chart-24px.svg">
+                    <img src="/bundles/pimcoreadmin/img/material-icons/outline-file-24px.svg">
                 </li>
             <?php } ?>
             <?php if (\Pimcore\Config::inPerspective($runtimePerspective, "extras")) { ?>
@@ -159,7 +159,7 @@ $runtimePerspective = \Pimcore\Config::getRuntimePerspective($user);
         <img src="/admin/user/get-image" data-menu-tooltip="<?= $user->getName() ?> | <?= $this->translate('my_profile') ?>"/>
     </div>
     <a id="pimcore_logout" data-menu-tooltip="<?= $this->translate("logout") ?>" href="<?= $view->router()->path('pimcore_admin_logout') ?>" style="display: none">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23"><path d="M10.06,17.09l1.8,1.8,6.39-6.39L11.86,6.11l-1.8,1.8,3.3,3.31H1v2.56H13.36ZM21.44,1H3.56A2.55,2.55,0,0,0,1,3.56V8.67H3.56V3.56H21.44V21.44H3.56V16.33H1v5.11A2.55,2.55,0,0,0,3.56,24H21.44A2.56,2.56,0,0,0,24,21.44V3.56A2.56,2.56,0,0,0,21.44,1Z" transform="translate(-1 -1)"/></svg>
+        <img src="/bundles/pimcoreadmin/img/material-icons/outline-logout-24px.svg">
     </a>
     <div id="pimcore_signet" data-menu-tooltip="Pimcore Platform (<?= \Pimcore\Version::getVersion() ?>|<?= \Pimcore\Version::getRevision() ?>)" style="text-indent: -10000px">
         BE RESPECTFUL AND HONOR OUR WORK FOR FREE & OPEN SOURCE SOFTWARE BY NOT REMOVING OUR LOGO.
@@ -215,7 +215,6 @@ $scriptLibs = array(
 
     // library
     "lib/class.js",
-    "lib/jquery-3.3.1.min.js",
     "lib/ext/ext-all" . $debugSuffix . ".js",
     "lib/ext/classic/theme-triton/theme-triton" . $debugSuffix . ".js",
 
@@ -343,8 +342,12 @@ $scripts = array(
     "pimcore/element/tag/imagehotspotmarkereditor.js",
     "pimcore/element/replace_assignments.js",
     "pimcore/element/permissionchecker.js",
+    "pimcore/element/gridexport/abstract.js",
+    "pimcore/element/helpers/gridColumnConfig.js",
+    "pimcore/element/helpers/gridConfigDialog.js",
+    "pimcore/element/helpers/gridCellEditor.js",
+    "pimcore/element/helpers/gridTabAbstract.js",
     "pimcore/object/helpers/grid.js",
-    "pimcore/object/helpers/gridcolumnconfig.js",
     "pimcore/object/helpers/gridConfigDialog.js",
     "pimcore/object/helpers/import/csvPreviewTab.js",
     "pimcore/object/helpers/import/columnConfigurationTab.js",
@@ -355,7 +358,6 @@ $scripts = array(
     "pimcore/object/helpers/import/reportTab.js",
     "pimcore/object/helpers/classTree.js",
     "pimcore/object/helpers/gridTabAbstract.js",
-    "pimcore/object/helpers/gridCellEditor.js",
     "pimcore/object/helpers/metadataMultiselectEditor.js",
     "pimcore/object/helpers/customLayoutEditor.js",
     "pimcore/object/helpers/optionEditor.js",
@@ -365,6 +367,10 @@ $scripts = array(
     "pimcore/element/tag/configuration.js",
     "pimcore/element/tag/assignment.js",
     "pimcore/element/tag/tree.js",
+    "pimcore/asset/helpers/metadataTree.js",
+    "pimcore/asset/helpers/gridConfigDialog.js",
+    "pimcore/asset/helpers/gridTabAbstract.js",
+    "pimcore/asset/helpers/grid.js",
 
     // documents
     "pimcore/document/properties.js",
@@ -379,6 +385,7 @@ $scripts = array(
     "pimcore/document/emails/settings.js",
     "pimcore/document/newsletters/settings.js",
     "pimcore/document/newsletters/sendingPanel.js",
+    "pimcore/document/newsletters/plaintextPanel.js",
     "pimcore/document/newsletters/addressSourceAdapters/default.js",
     "pimcore/document/newsletters/addressSourceAdapters/csvList.js",
     "pimcore/document/newsletters/addressSourceAdapters/report.js",
@@ -399,6 +406,13 @@ $scripts = array(
     "pimcore/document/customviews/tree.js",
 
     // assets
+    "pimcore/asset/tags/abstract.js",
+    "pimcore/asset/tags/checkbox.js",
+    "pimcore/asset/tags/date.js",
+    "pimcore/asset/tags/input.js",
+    "pimcore/asset/tags/manyToOneRelation.js",
+    "pimcore/asset/tags/select.js",
+    "pimcore/asset/tags/textarea.js",
     "pimcore/asset/asset.js",
     "pimcore/asset/unknown.js",
     "pimcore/asset/embedded_meta_data.js",
@@ -413,12 +427,15 @@ $scripts = array(
     "pimcore/asset/metadata.js",
     "pimcore/asset/tree.js",
     "pimcore/asset/customviews/tree.js",
+    "pimcore/asset/gridexport/xlsx.js",
+    "pimcore/asset/gridexport/csv.js",
 
     // object
     "pimcore/object/helpers/edit.js",
     "pimcore/object/helpers/layout.js",
     "pimcore/object/classes/class.js",
     "pimcore/object/class.js",
+    "pimcore/object/bulk-base.js",
     "pimcore/object/bulk-export.js",
     "pimcore/object/bulk-import.js",
     "pimcore/object/classes/data/data.js",          // THIS MUST BE THE FIRST FILE, DO NOT MOVE THIS DOWN !!!
@@ -443,6 +460,7 @@ $scripts = array(
     "pimcore/object/classes/data/reverseManyToManyObjectRelation.js",
     "pimcore/object/classes/data/booleanSelect.js",
     "pimcore/object/classes/data/select.js",
+    "pimcore/object/classes/data/urlSlug.js",
     "pimcore/object/classes/data/user.js",
     "pimcore/object/classes/data/textarea.js",
     "pimcore/object/classes/data/wysiwyg.js",
@@ -457,6 +475,7 @@ $scripts = array(
     "pimcore/object/classes/data/geopoint.js",
     "pimcore/object/classes/data/geobounds.js",
     "pimcore/object/classes/data/geopolygon.js",
+    "pimcore/object/classes/data/geopolyline.js",
     "pimcore/object/classes/data/language.js",
     "pimcore/object/classes/data/password.js",
     "pimcore/object/classes/data/multiselect.js",
@@ -561,6 +580,7 @@ $scripts = array(
     "pimcore/object/gridcolumn/operator/ObjectBrickGetter.js",
     "pimcore/object/tags/advancedManyToManyObjectRelation.js",
     "pimcore/object/tags/reverseManyToManyObjectRelation.js",
+    "pimcore/object/tags/urlSlug.js",
     "pimcore/object/tags/booleanSelect.js",
     "pimcore/object/tags/select.js",
     "pimcore/object/tags/user.js",
@@ -577,6 +597,7 @@ $scripts = array(
     "pimcore/object/tags/geobounds.js",
     "pimcore/object/tags/geopoint.js",
     "pimcore/object/tags/geopolygon.js",
+    "pimcore/object/tags/geopolyline.js",
     "pimcore/object/tags/language.js",
     "pimcore/object/tags/password.js",
     "pimcore/object/tags/multiselect.js",
@@ -610,6 +631,8 @@ $scripts = array(
     "pimcore/object/layout/iframe.js",
     "pimcore/object/customviews/tree.js",
     "pimcore/object/quantityvalue/unitsettings.js",
+    "pimcore/object/gridexport/xlsx.js",
+    "pimcore/object/gridexport/csv.js",
 
     //plugins
     "pimcore/plugin/broker.js",

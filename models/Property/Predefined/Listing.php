@@ -21,26 +21,30 @@ use Pimcore\Model;
 
 /**
  * @method \Pimcore\Model\Property\Predefined\Listing\Dao getDao()
+ * @method \Pimcore\Model\Property\Predefined[] load()
+ * @method int getTotalCount()
  */
 class Listing extends Model\Listing\JsonListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Property\Predefined
-     *
-     * @var array
+     * @var array|null
      */
-    public $properties = [];
+    protected $properties = null;
 
     /**
-     * @return array
+     * @return \Pimcore\Model\Property\Predefined[]
      */
     public function getProperties()
     {
+        if ($this->properties === null) {
+            $this->getDao()->load();
+        }
+
         return $this->properties;
     }
 
     /**
-     * @param array $properties
+     * @param \Pimcore\Model\Property\Predefined[] $properties
      *
      * @return $this
      */

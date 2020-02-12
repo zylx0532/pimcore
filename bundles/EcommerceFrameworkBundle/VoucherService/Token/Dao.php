@@ -16,9 +16,16 @@ namespace Pimcore\Bundle\EcommerceFrameworkBundle\VoucherService\Token;
 
 // TODO - Log Errors
 
+use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\VoucherService\Reservation;
+use Pimcore\Bundle\EcommerceFrameworkBundle\VoucherService\Token;
+
+/**
+ * @property Token $model
+ */
 class Dao extends \Pimcore\Model\Dao\AbstractDao
 {
-    const TABLE_NAME = 'ecommerceframework_vouchertoolkit_tokens';
+    public const TABLE_NAME = 'ecommerceframework_vouchertoolkit_tokens';
 
     public function __construct()
     {
@@ -26,7 +33,7 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
     }
 
     /**
-     * @param $code
+     * @param string $code
      *
      * @return bool
      */
@@ -39,6 +46,8 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
             }
             $this->assignVariablesToModel($result);
             $this->model->setValue('id', $result['id']);
+
+            return true;
         } catch (\Exception $e) {
             //            \Pimcore\Log\Simple::log('VoucherService',$e);
             return false;
@@ -48,11 +57,11 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
     /**
      * @return bool
      *
-     * @param \Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\ICart $cart
+     * @param CartInterface $cart
      */
-    public function isReserved(\Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\ICart $cart = null)
+    public function isReserved(CartInterface $cart = null)
     {
-        $reservation = \Pimcore\Bundle\EcommerceFrameworkBundle\VoucherService\Reservation::get($this->model->getToken(), $cart);
+        $reservation = Reservation::get($this->model->getToken(), $cart);
         if (!$reservation->exists()) {
             return false;
         }
@@ -66,29 +75,6 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
             return $this->db->fetchOne('SELECT usages FROM ' . self::TABLE_NAME . ' WHERE token = ?', $code);
         } catch (\Exception $e) {
             return false;
-        }
-    }
-
-    /**
-     * @param $token
-     * @param int $allowedUsages
-     *
-     * @return bool
-     */
-    public static function isUsedToken($token, $allowedUsages = 1)
-    {
-        $db = \Pimcore\Db::get();
-
-        $query = 'SELECT usages FROM ' . self::TABLE_NAME . ' WHERE token = ? ';
-        $params[] = $token;
-
-        try {
-            $tokenUsed = $db->fetchOne($query, $params);
-
-            return $tokenUsed >= $allowedUsages;
-            // If an Error occurs the token is defined as used.
-        } catch (\Exception $e) {
-            return true;
         }
     }
 

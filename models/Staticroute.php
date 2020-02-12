@@ -18,11 +18,12 @@
 namespace Pimcore\Model;
 
 use Pimcore\Event\FrontendEvents;
-use Pimcore\Logger;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
- * @method \Pimcore\Model\Staticroute\Dao getDao()
+ * @method Staticroute\Dao getDao()
+ * @method void save()
+ * @method void delete()
  */
 class Staticroute extends AbstractModel
 {
@@ -116,7 +117,7 @@ class Staticroute extends AbstractModel
     /**
      * @static
      *
-     * @param $route
+     * @param Staticroute $route
      */
     public static function setCurrentRoute($route)
     {
@@ -154,8 +155,6 @@ class Staticroute extends AbstractModel
                 $route->getDao()->getById();
                 \Pimcore\Cache\Runtime::set($cacheKey, $route);
             } catch (\Exception $e) {
-                Logger::error($e);
-
                 return null;
             }
         }
@@ -165,9 +164,9 @@ class Staticroute extends AbstractModel
 
     /**
      * @param string $name
-     * @param null $siteId
+     * @param int|null $siteId
      *
-     * @return Staticroute
+     * @return Staticroute|null
      */
     public static function getByName($name, $siteId = null)
     {
@@ -184,8 +183,6 @@ class Staticroute extends AbstractModel
         try {
             $route->getDao()->getByName($name, $siteId);
         } catch (\Exception $e) {
-            Logger::warn($e);
-
             return null;
         }
 
@@ -196,6 +193,8 @@ class Staticroute extends AbstractModel
 
             return self::getById($route->getId());
         }
+
+        return null;
     }
 
     /**
@@ -450,13 +449,9 @@ class Staticroute extends AbstractModel
             if ($siteId < 1) {
                 continue;
             }
-            try {
-                $site = Site::getById($siteId);
-                if ($site) {
-                    $result[] = $siteId;
-                }
-            } catch (\Exception $e) {
-                // cleanup
+
+            if ($site = Site::getById($siteId)) {
+                $result[] = $siteId;
             }
         }
 
@@ -702,7 +697,7 @@ class Staticroute extends AbstractModel
     }
 
     /**
-     * @param $modificationDate
+     * @param int $modificationDate
      *
      * @return $this
      */
@@ -722,7 +717,7 @@ class Staticroute extends AbstractModel
     }
 
     /**
-     * @param $creationDate
+     * @param int $creationDate
      *
      * @return $this
      */

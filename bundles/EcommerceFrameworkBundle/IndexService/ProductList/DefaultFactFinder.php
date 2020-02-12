@@ -16,17 +16,18 @@ namespace Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList;
 
 use Monolog\Logger;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Exception\InvalidConfigException;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IConfig;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\ConfigInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\FactFinderConfigInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractCategory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IIndexable;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IndexableInterface;
 use Pimcore\Tool;
 use Psr\Http\Message\ResponseInterface;
 use Zend\Paginator\Adapter\AdapterInterface;
 
-class DefaultFactFinder implements IProductList
+class DefaultFactFinder implements ProductListInterface
 {
     /**
-     * @var IIndexable[]
+     * @var IndexableInterface[]
      */
     protected $products = null;
 
@@ -49,7 +50,7 @@ class DefaultFactFinder implements IProductList
     protected $productPositionMap = [];
 
     /**
-     * @var \Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IFactFinderConfig
+     * @var FactFinderConfigInterface
      */
     protected $tenantConfig;
 
@@ -76,7 +77,7 @@ class DefaultFactFinder implements IProductList
     /**
      * @var string
      */
-    protected $variantMode = IProductList::VARIANT_MODE_INCLUDE;
+    protected $variantMode = ProductListInterface::VARIANT_MODE_INCLUDE;
 
     /**
      * @var int
@@ -116,7 +117,7 @@ class DefaultFactFinder implements IProductList
     protected $conditions = [];
 
     /**
-     * @var string[]
+     * @var array
      */
     protected $queryConditions = [];
 
@@ -251,9 +252,9 @@ class DefaultFactFinder implements IProductList
     }
 
     /**
-     * @param IConfig $tenantConfig
+     * @param ConfigInterface $tenantConfig
      */
-    public function __construct(IConfig $tenantConfig)
+    public function __construct(ConfigInterface $tenantConfig)
     {
         $this->tenantName = $tenantConfig->getTenantName();
         $this->tenantConfig = $tenantConfig;
@@ -300,7 +301,7 @@ class DefaultFactFinder implements IProductList
      * Fieldname is optional but highly recommended - needed for resetting condition based on fieldname
      * and exclude functionality in group by results
      *
-     * @param $condition
+     * @param string $condition
      * @param string $fieldname
      */
     public function addQueryCondition($condition, $fieldname = '')
@@ -312,9 +313,7 @@ class DefaultFactFinder implements IProductList
     /**
      * Reset query condition for fieldname
      *
-     * @param $fieldname
-     *
-     * @return mixed
+     * @param string $fieldname
      */
     public function resetQueryCondition($fieldname)
     {
@@ -390,7 +389,7 @@ class DefaultFactFinder implements IProductList
     }
 
     /**
-     * @param $orderKey string | array  - either single field name, or array of field names or array of arrays (field name, direction)
+     * @param string|array $orderKey either single field name, or array of field names or array of arrays (field name, direction)
      */
     public function setOrderKey($orderKey)
     {
@@ -452,7 +451,7 @@ class DefaultFactFinder implements IProductList
     }
 
     /**
-     * @return IIndexable[]
+     * @return IndexableInterface[]
      *
      * @throws \Exception
      */
@@ -466,7 +465,7 @@ class DefaultFactFinder implements IProductList
         }
 
         if (array_key_exists('error', $data)) {
-            throw new Exception($data['error']);
+            throw new \Exception($data['error']);
         }
         $searchResult = $data['searchResult'];
 
@@ -719,7 +718,7 @@ class DefaultFactFinder implements IProductList
     /**
      * loads group by values based on relation fieldname either from local variable if prepared or directly from product index
      *
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -730,10 +729,11 @@ class DefaultFactFinder implements IProductList
     public function getGroupBySystemValues($fieldname, $countValues = false, $fieldnameShouldBeExcluded = true)
     {
         // TODO: Implement getGroupBySystemValues() method.
+        return [];
     }
 
     /**
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded
      *
@@ -781,9 +781,9 @@ class DefaultFactFinder implements IProductList
         $client = \Pimcore::getContainer()->get('pimcore.http_client');
         $response = $client->request('GET', $url);
 
-        $factFinderTimeout = $response->getHeader('X-FF-Timeout');
+        $factFinderTimeout = $response->getHeaderLine('X-FF-Timeout');
         if ($factFinderTimeout === 'true') {
-            $errorMessage = 'FactFinder Read timeout:' . $url.' X-FF-RefKey: ' . $response->getHeader('X-FF-RefKey').' Tried: ' . ($trys + 1);
+            $errorMessage = 'FactFinder Read timeout:' . $url.' X-FF-RefKey: ' . $response->getHeaderLine('X-FF-RefKey').' Tried: ' . ($trys + 1);
             $this->getLogger()->err($errorMessage);
             $trys++;
             if ($trys > 2) {
@@ -810,17 +810,6 @@ class DefaultFactFinder implements IProductList
             $this->tenantConfig->getClientConfig('host'),
             $this->tenantConfig->getClientConfig('customer')
         );
-    }
-
-    public function getSearchParams()
-    {
-        $params = [];
-        if ($data = $this->getLastResultData()) {
-            $url = str_replace('/FACT-Finder/Search.ff?', '', $data['searchResult']['searchParams']);
-            parse_str($url, $params);
-        }
-
-        return $params;
     }
 
     /**
@@ -876,7 +865,7 @@ class DefaultFactFinder implements IProductList
     }
 
     /**
-     * @return null
+     * @return string|null
      */
     public function getFollowSearchParam()
     {
@@ -884,7 +873,7 @@ class DefaultFactFinder implements IProductList
     }
 
     /**
-     * @param null $followSearchParam
+     * @param string|null $followSearchParam
      *
      * @return $this
      */
@@ -903,7 +892,6 @@ class DefaultFactFinder implements IProductList
     protected function sendRequest()
     {
         $url = $this->getQuery();
-        $this->requestUrl = $url;
         $response = $this->doRequest($url);
         $data = json_decode((string)$response->getBody(), true);
 
@@ -914,7 +902,6 @@ class DefaultFactFinder implements IProductList
         if ($data['searchResult']['timedOut']) {
             throw new \Exception('FactFinder Read timeout in response JSON: ' . $url);
         }
-        $this->resultData = $data;
 
         return $data;
     }

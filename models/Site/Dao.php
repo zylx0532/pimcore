@@ -25,7 +25,7 @@ use Pimcore\Model;
 class Dao extends Model\Dao\AbstractDao
 {
     /**
-     * @param $id
+     * @param int $id
      *
      * @throws \Exception
      */
@@ -33,13 +33,13 @@ class Dao extends Model\Dao\AbstractDao
     {
         $data = $this->db->fetchRow('SELECT * FROM sites WHERE id = ?', $id);
         if (!$data['id']) {
-            throw new \Exception('there is no site for the requested id');
+            throw new \Exception(sprintf('Unable to load site with ID `%s`', $id));
         }
         $this->assignVariablesToModel($data);
     }
 
     /**
-     * @param $id
+     * @param int $id
      *
      * @throws \Exception
      */
@@ -47,13 +47,13 @@ class Dao extends Model\Dao\AbstractDao
     {
         $data = $this->db->fetchRow('SELECT * FROM sites WHERE rootId = ?', $id);
         if (!$data['id']) {
-            throw new \Exception('there is no site for the requested rootId');
+            throw new \Exception(sprintf('Unable to load site with ID `%s`', $id));
         }
         $this->assignVariablesToModel($data);
     }
 
     /**
-     * @param $domain
+     * @param string $domain
      *
      * @throws \Exception
      */
@@ -100,17 +100,15 @@ class Dao extends Model\Dao\AbstractDao
      */
     public function save()
     {
-        if ($this->model->getId()) {
-            return $this->update();
+        if (!$this->model->getId()) {
+            $this->create();
         }
 
-        return $this->create();
+        $this->update();
     }
 
     /**
      * Create a new record for the object in database
-     *
-     * @return bool
      */
     public function create()
     {
@@ -119,12 +117,10 @@ class Dao extends Model\Dao\AbstractDao
         $this->model->setModificationDate($ts);
         $this->db->insert('sites', ['rootId' => $this->model->getRootId()]);
         $this->model->setId($this->db->lastInsertId());
-
-        $this->save();
     }
 
     /**
-     * Save changes to database, it's an good idea to use save() instead
+     * Save changes to database, it's a good idea to use save() instead
      */
     public function update()
     {
@@ -152,11 +148,13 @@ class Dao extends Model\Dao\AbstractDao
     }
 
     /**
-     * Deletes object from database
+     * Deletes site from database
      */
     public function delete()
     {
         $this->db->delete('sites', ['id' => $this->model->getId()]);
+        //clean slug table
+        Model\DataObject\Data\UrlSlug::handleSiteDeleted($this->model->getId());
 
         $this->model->clearDependentCache();
     }

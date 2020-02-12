@@ -23,6 +23,9 @@ use Pimcore\Model\DataObject;
 
 /**
  * @method \Pimcore\Model\DataObject\Fieldcollection\Definition\Dao getDao()
+ * @method string getTableName(DataObject\ClassDefinition $class)
+ * @method void createUpdateTable(DataObject\ClassDefinition $class)
+ * @method string getLocalizedTableName(DataObject\ClassDefinition $class)
  */
 class Definition extends Model\AbstractModel
 {
@@ -52,6 +55,11 @@ class Definition extends Model\AbstractModel
      * @var array
      */
     public $layoutDefinitions;
+
+    /**
+     * @var DataObject\ClassDefinition\Data[]
+     */
+    protected $fieldDefinitions;
 
     /**
      * @return string
@@ -103,10 +111,14 @@ class Definition extends Model\AbstractModel
 
     /**
      * @param string $title
+     *
+     * @return $this
      */
     public function setTitle($title)
     {
         $this->title = $title;
+
+        return $this;
     }
 
     /**
@@ -135,7 +147,7 @@ class Definition extends Model\AbstractModel
     /**
      * @param array $context additional contextual data
      *
-     * @return array
+     * @return DataObject\ClassDefinition\Data[]
      */
     public function getFieldDefinitions($context = [])
     {
@@ -180,10 +192,10 @@ class Definition extends Model\AbstractModel
     }
 
     /**
-     * @param $key
+     * @param string $key
      * @param array $context additional contextual data
      *
-     * @return DataObject\ClassDefinition\Data|bool
+     * @return DataObject\ClassDefinition\Data|null
      */
     public function getFieldDefinition($key, $context = [])
     {
@@ -197,7 +209,7 @@ class Definition extends Model\AbstractModel
             return $fieldDefinition;
         }
 
-        return false;
+        return null;
     }
 
     protected function doEnrichFieldDefinition($fieldDefinition, $context = [])
@@ -238,15 +250,15 @@ class Definition extends Model\AbstractModel
     }
 
     /**
-     * @param $key
+     * @param string $key
      *
      * @throws \Exception
      *
-     * @return Definition
+     * @return self|null
      */
     public static function getByKey($key)
     {
-        /** @var $fc Definition */
+        /** @var Definition $fc */
         $fc = null;
         $cacheKey = 'fieldcollection_' . $key;
 
@@ -269,7 +281,7 @@ class Definition extends Model\AbstractModel
             return $fc;
         }
 
-        throw new \Exception('Field-Collection with key: ' . $key . ' does not exist.');
+        return null;
     }
 
     /**
@@ -281,6 +293,15 @@ class Definition extends Model\AbstractModel
     {
         if (!$this->getKey()) {
             throw new \Exception('A field-collection needs a key to be saved!');
+        }
+
+        if (!preg_match('/[a-zA-Z]+/', $this->getKey())) {
+            throw new \Exception(sprintf('Invalid key for field-collection: %s', $this->getKey()));
+        }
+
+        if ($this->getParentClass() && !preg_match('/^[a-zA-Z_\x7f-\xff\\\][a-zA-Z0-9_\x7f-\xff\\\]*$/', $this->getParentClass())) {
+            throw new \Exception(sprintf('Invalid parentClass value for class definition: %s',
+                $this->getParentClass()));
         }
 
         $infoDocBlock = $this->getInfoDocBlock();
@@ -342,10 +363,6 @@ class Definition extends Model\AbstractModel
         $fdDefs = $this->getFieldDefinitions();
         if (is_array($fdDefs) && count($fdDefs)) {
             foreach ($fdDefs as $key => $def) {
-
-                /**
-                 * @var $def DataObject\ClassDefinition\Data
-                 */
                 $cd .= $def->getGetterCodeFieldcollection($this);
 
                 if ($def instanceof DataObject\ClassDefinition\Data\Localizedfields) {
@@ -444,15 +461,32 @@ class Definition extends Model\AbstractModel
         $cd .= "\n\n";
         $cd .= "Fields Summary: \n";
 
-        if (is_array($this->getFieldDefinitions())) {
-            foreach ($this->getFieldDefinitions() as $fd) {
-                $cd .= ' - ' . $fd->getName() . ' [' . $fd->getFieldtype() . "]\n";
-            }
-        }
+        $cd = $this->getInfoDocBlockForFields($this, $cd, 1);
 
         $cd .= '*/ ';
 
         return $cd;
+    }
+
+    /**
+     * @param Definition|DataObject\ClassDefinition\Data $definition
+     * @param string $text
+     * @param int $level
+     *
+     * @return string
+     */
+    protected function getInfoDocBlockForFields($definition, $text, $level)
+    {
+        if (is_array($definition->getFieldDefinitions())) {
+            foreach ($definition->getFieldDefinitions() as $fd) {
+                $text .= str_pad('', $level, '-') . ' ' . $fd->getName() . ' [' . $fd->getFieldtype() . "]\n";
+                if (method_exists($fd, 'getFieldDefinitions')) {
+                    $text = $this->getInfoDocBlockForFields($fd, $text, $level + 1);
+                }
+            }
+        }
+
+        return $text;
     }
 
     /**
@@ -465,9 +499,13 @@ class Definition extends Model\AbstractModel
 
     /**
      * @param string $group
+     *
+     * @return $this
      */
     public function setGroup($group)
     {
         $this->group = $group;
+
+        return $this;
     }
 }

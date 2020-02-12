@@ -16,6 +16,12 @@ namespace Pimcore\Bundle\EcommerceFrameworkBundle\VoucherService\Reservation;
 
 // TODO - Log Exceptions
 
+use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\VoucherService\Reservation;
+
+/**
+ * @property Reservation $model
+ */
 class Dao extends \Pimcore\Model\Dao\AbstractDao
 {
     const TABLE_NAME = 'ecommerceframework_vouchertoolkit_reservations';
@@ -27,11 +33,11 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
 
     /**
      * @param string $code
-     * @param \Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\ICart $cart
+     * @param CartInterface $cart
      *
      * @return bool|string
      */
-    public function get($code, \Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\ICart $cart = null)
+    public function get($code, CartInterface $cart = null)
     {
         $query = 'SELECT * FROM ' . self::TABLE_NAME . ' WHERE token = ?';
         $params[] = $code;
@@ -66,7 +72,7 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
             $this->db->query('INSERT INTO ' . self::TABLE_NAME . ' (token,cart_id,timestamp) VALUES (?,?,NOW())', [$code, $cart->getId()]);
 
             return true;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
     }
@@ -95,6 +101,7 @@ class Dao extends \Pimcore\Model\Dao\AbstractDao
         $db = \Pimcore\Db::get();
 
         $query = 'SELECT COUNT(*) FROM ' . self::TABLE_NAME;
+        $params = [];
 
         if (isset($seriesId)) {
             $query .= ' WHERE seriesId = ?';

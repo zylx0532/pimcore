@@ -15,19 +15,22 @@
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager;
 
 use Pimcore\Bundle\EcommerceFrameworkBundle\Factory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\Action\IProductDiscount;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\Condition\IBracket;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\Action\ProductDiscountInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\Condition\BracketInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\Rule\Dao;
 use Pimcore\Cache\Runtime;
 use Pimcore\Logger;
 use Pimcore\Model\AbstractModel;
 
-class Rule extends AbstractModel implements IRule
+/**
+ * @method Dao getDao()
+ */
+class Rule extends AbstractModel implements RuleInterface
 {
     /**
      * @param int $id
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public static function getById($id)
     {
@@ -64,20 +67,20 @@ class Rule extends AbstractModel implements IRule
     /**
      * @var string[]
      */
-    protected $label;
+    protected $label = [];
 
     /**
      * @var string[]
      */
-    protected $description;
+    protected $description = [];
 
     /**
-     * @var IBracket
+     * @var BracketInterface
      */
     protected $condition;
 
     /**
-     * @var array|IAction
+     * @var array|ActionInterface
      */
     protected $action = [];
 
@@ -99,8 +102,8 @@ class Rule extends AbstractModel implements IRule
     /**
      * load model with serializes data from db
      *
-     * @param  $key
-     * @param  $value
+     * @param string $key
+     * @param mixed $value
      *
      * @return AbstractModel
      */
@@ -136,9 +139,9 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @param $id
+     * @param int $id
      *
-     * @return $this|IRule
+     * @return $this|RuleInterface
      */
     public function setId($id)
     {
@@ -159,7 +162,7 @@ class Rule extends AbstractModel implements IRule
      * @param string $label
      * @param string $locale
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setLabel($label, $locale = null)
     {
@@ -171,11 +174,11 @@ class Rule extends AbstractModel implements IRule
     /**
      * @param string $locale
      *
-     * @return string
+     * @return string|null
      */
     public function getLabel($locale = null)
     {
-        return $this->label[$this->getLanguage($locale)];
+        return $this->label[$this->getLanguage($locale)] ?? null;
     }
 
     /**
@@ -187,10 +190,10 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @param $name
-     * @param string $locale
+     * @param string $name
+     * @param string|null $locale
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setName($name, $locale = null)
     {
@@ -203,7 +206,7 @@ class Rule extends AbstractModel implements IRule
      * @param string $description
      * @param string $locale
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setDescription($description, $locale = null)
     {
@@ -215,17 +218,17 @@ class Rule extends AbstractModel implements IRule
     /**
      * @param string $locale
      *
-     * @return string
+     * @return string|null
      */
     public function getDescription($locale = null)
     {
-        return $this->description[$this->getLanguage($locale)];
+        return $this->description[$this->getLanguage($locale)] ?? null;
     }
 
     /**
      * @param string $behavior
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setBehavior($behavior)
     {
@@ -245,7 +248,7 @@ class Rule extends AbstractModel implements IRule
     /**
      * @param bool $active
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setActive($active)
     {
@@ -263,17 +266,19 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @param ICondition $condition
+     * @param ConditionInterface $condition
      *
-     * @return IRule
+     * @return RuleInterface
      */
-    public function setCondition(ICondition $condition)
+    public function setCondition(ConditionInterface $condition)
     {
         $this->condition = $condition;
+
+        return $this;
     }
 
     /**
-     * @return ICondition
+     * @return ConditionInterface
      */
     public function getCondition()
     {
@@ -283,7 +288,7 @@ class Rule extends AbstractModel implements IRule
     /**
      * @param array $action
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setActions(array $action)
     {
@@ -293,7 +298,7 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @return array|IAction
+     * @return array|ActionInterface
      */
     public function getActions()
     {
@@ -303,7 +308,7 @@ class Rule extends AbstractModel implements IRule
     /**
      * @param int $prio
      *
-     * @return IRule
+     * @return RuleInterface
      */
     public function setPrio($prio)
     {
@@ -321,7 +326,7 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @return IRule
+     * @return RuleInterface
      */
     public function save()
     {
@@ -341,11 +346,11 @@ class Rule extends AbstractModel implements IRule
     /**
      * test all conditions if this rule is valid
      *
-     * @param IEnvironment $environment
+     * @param EnvironmentInterface $environment
      *
      * @return bool
      */
-    public function check(IEnvironment $environment)
+    public function check(EnvironmentInterface $environment)
     {
         $condition = $this->getCondition();
         if ($condition) {
@@ -363,7 +368,7 @@ class Rule extends AbstractModel implements IRule
     public function hasProductActions()
     {
         foreach ($this->getActions() as $action) {
-            if ($action instanceof IProductDiscount) {
+            if ($action instanceof ProductDiscountInterface) {
                 return true;
             }
         }
@@ -372,14 +377,14 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @param IEnvironment $environment
+     * @param EnvironmentInterface $environment
      *
-     * @return IRule
+     * @return RuleInterface
      */
-    public function executeOnProduct(IEnvironment $environment)
+    public function executeOnProduct(EnvironmentInterface $environment)
     {
         foreach ($this->getActions() as $action) {
-            /* @var IAction $action */
+            /* @var ActionInterface $action */
             $action->executeOnProduct($environment);
         }
 
@@ -387,14 +392,14 @@ class Rule extends AbstractModel implements IRule
     }
 
     /**
-     * @param IEnvironment $environment
+     * @param EnvironmentInterface $environment
      *
-     * @return IRule
+     * @return RuleInterface
      */
-    public function executeOnCart(IEnvironment $environment)
+    public function executeOnCart(EnvironmentInterface $environment)
     {
         foreach ($this->getActions() as $action) {
-            /* @var IAction $action */
+            /* @var ActionInterface $action */
             $action->executeOnCart($environment);
         }
 
@@ -404,7 +409,7 @@ class Rule extends AbstractModel implements IRule
     /**
      * gets current language
      *
-     * @param $language
+     * @param string|null $language
      *
      * @return string
      */
@@ -415,5 +420,24 @@ class Rule extends AbstractModel implements IRule
         }
 
         return Factory::getInstance()->getEnvironment()->getSystemLocale();
+    }
+
+    /**
+     * @param string $typeClass
+     *
+     * @return ConditionInterface[]
+     */
+    public function getConditionsByType(string $typeClass): array
+    {
+        $conditions = [];
+
+        $rootCondition = $this->getCondition();
+        if ($rootCondition instanceof BracketInterface) {
+            $conditions = $rootCondition->getConditionsByType($typeClass);
+        } elseif ($rootCondition instanceof $typeClass) {
+            $conditions[] = $rootCondition;
+        }
+
+        return $conditions;
     }
 }

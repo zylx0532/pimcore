@@ -21,24 +21,29 @@ use Pimcore\Model;
 
 /**
  * @method \Pimcore\Model\Tool\Qrcode\Config\Listing\Dao getDao()
+ * @method \Pimcore\Model\Tool\Qrcode\Config[] load()
  */
 class Listing extends Model\Listing\JsonListing
 {
     /**
-     * @var array
+     * @var Model\Tool\Qrcode\Config[]|null
      */
-    public $codes = [];
+    protected $codes = null;
 
     /**
-     * @return array
+     * @return Model\Tool\Qrcode\Config[]
      */
     public function getCodes()
     {
+        if ($this->codes === null) {
+            $this->getDao()->load();
+        }
+
         return $this->codes;
     }
 
     /**
-     * @param $codes
+     * @param Model\Tool\Qrcode\Config[]|null $codes
      *
      * @return $this
      */

@@ -14,7 +14,7 @@
 
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\FilterService;
 
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\IProductList;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\ProductListInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractCategory;
 use Pimcore\Templating\Model\ViewModel;
 
@@ -26,8 +26,8 @@ class Helper
 {
     /**
      * @param \Pimcore\Model\DataObject\FilterDefinition $filterDefinition
-     * @param IProductList $productList
-     * @param $params
+     * @param ProductListInterface $productList
+     * @param array $params
      * @param ViewModel $viewModel
      * @param FilterService $filterService
      * @param bool $loadFullPage
@@ -35,7 +35,7 @@ class Helper
      */
     public static function setupProductList(
         \Pimcore\Model\DataObject\FilterDefinition $filterDefinition,
-        IProductList $productList,
+        ProductListInterface $productList,
         $params,
         ViewModel $viewModel,
         FilterService $filterService,
@@ -139,7 +139,7 @@ class Helper
     }
 
     /**
-     * @param $page
+     * @param int $page
      *
      * @return string
      */
@@ -164,9 +164,9 @@ class Helper
     }
 
     /**
-     * @param $conditions
+     * @param array $conditions
      *
-     * @return AbstractCategory
+     * @return AbstractCategory|null
      */
     public static function getFirstFilteredCategory($conditions)
     {
@@ -177,5 +177,7 @@ class Helper
                 }
             }
         }
+
+        return null;
     }
 }

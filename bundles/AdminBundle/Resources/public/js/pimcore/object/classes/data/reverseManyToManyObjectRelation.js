@@ -46,7 +46,7 @@ pimcore.object.classes.data.reverseManyToManyObjectRelation = Class.create(pimco
     },
 
     getIconClass: function () {
-        return "pimcore_icon_object";
+        return "pimcore_icon_reverseManyToManyObjectRelation";
     },
 
     getLayout: function ($super) {
@@ -173,5 +173,5 @@ pimcore.object.classes.data.reverseManyToManyObjectRelation = Class.create(pimco
 
 });
 
-// @TODO BC layer, to be removed in v6.0
+// @TODO BC layer, to be removed in v7.0
 pimcore.object.classes.data.nonownerobjects = pimcore.object.classes.data.reverseManyToManyObjectRelation;

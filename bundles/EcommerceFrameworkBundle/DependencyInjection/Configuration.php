@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\DependencyInjection;
 
 use Pimcore\Bundle\CoreBundle\DependencyInjection\Config\Processor\PlaceholderProcessor;
+use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\AbstractCart;
 use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\Cart;
 use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartFactory;
 use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartPriceCalculator;
@@ -116,10 +117,6 @@ class Configuration implements ConfigurationInterface
     {
         $rootNode
             ->children()
-                ->booleanNode('use_legacy_class_mapping')
-                    ->info('If true, the bundle will alias legacy class names (OnlineShop\Framework\*) to the new namespace')
-                    ->defaultFalse()
-                ->end()
                ->integerNode('decimal_scale')
                     ->info('Default scale used for Decimal objects')
                     ->min(0)
@@ -288,7 +285,8 @@ class Configuration implements ConfigurationInterface
                                     ->end()
                                     ->append($this->buildOptionsNode('factory_options', [
                                         'cart_class_name' => Cart::class,
-                                        'guest_cart_class_name' => SessionCart::class
+                                        'guest_cart_class_name' => SessionCart::class,
+                                        'cart_readonly_mode' => AbstractCart::CART_READ_ONLY_MODE_STRICT
                                     ]))
                                 ->end()
                             ->end()
@@ -423,11 +421,11 @@ class Configuration implements ConfigurationInterface
             // support deprecated options at the root level of the pricing_manager
             // values set here will OVERWRITE the value in every tenant, even if the
             // tenant defines the value!
-            // TODO remove in Pimcore 6
+            // TODO remove in Pimcore 7
             ->validate()
                 ->always(function ($v) {
                     $enabled = null;
-                    if (is_bool($v['enabled'])) {
+                    if (isset($v['enabled']) && is_bool($v['enabled'])) {
                         $enabled = $v['enabled'];
                         unset($v['enabled']);
                     }
@@ -764,7 +762,22 @@ class Configuration implements ConfigurationInterface
                             // check if all search attributes are defined as attribute
                             foreach ($v as $tenant => $tenantConfig) {
                                 foreach ($tenantConfig['search_attributes'] as $searchAttribute) {
-                                    if (!isset($tenantConfig['attributes'][$searchAttribute])) {
+                                    $attributeFound = false;
+                                    if (isset($tenantConfig['attributes'][$searchAttribute])) {
+                                        $attributeFound = true;
+                                    }
+
+                                    $delimiters = ['.', '^'];
+                                    foreach ($delimiters as $delimiter) {
+                                        if (!$attributeFound && strpos($searchAttribute, $delimiter) !== false) {
+                                            $fieldNameParts = explode($delimiter, $searchAttribute);
+                                            if (isset($tenantConfig['attributes'][$fieldNameParts[0]])) {
+                                                $attributeFound = true;
+                                            }
+                                        }
+                                    }
+
+                                    if (!$attributeFound) {
                                         throw new InvalidConfigurationException(sprintf(
                                             'The search attribute "%s" in product index tenant "%s" is not defined as attribute.',
                                             $searchAttribute,
@@ -893,7 +906,7 @@ class Configuration implements ConfigurationInterface
                                             // this option was never properly supported
                                             // and is ignored
                                             if (isset($v['mapping'])) {
-                                                @trigger_error('The "mapping" config entry on the ecommerce index attribute level is unsupported and will be removed in Pimcore 6. Please set "options.mapping" instead.', E_USER_DEPRECATED);
+                                                @trigger_error('The "mapping" config entry on the ecommerce index attribute level is unsupported and will be removed in Pimcore 7. Please set "options.mapping" instead.', E_USER_DEPRECATED);
                                                 unset($v['mapping']);
                                             }
 
@@ -911,7 +924,7 @@ class Configuration implements ConfigurationInterface
                                         ->append($this->buildOptionsNode('getter_options'))
                                         ->scalarNode('interpreter_id')->defaultNull()->info('Service id of interpreter for this field')->end()
                                         ->append($this->buildOptionsNode('interpreter_options'))
-                                        ->append($this->buildOptionsNode('mapping')) // TODO Symfony 3.4 set as deprecated. TODO Pimcore 6 remove option completely.
+                                        ->append($this->buildOptionsNode('mapping')) // TODO Symfony 3.4 set as deprecated. TODO Pimcore 7 remove option completely.
                                         ->booleanNode('hide_in_fieldlist_datatype')->defaultFalse()->info('Hides field in field list selection data type of filter service - default to false')->end()
                                     ->end()
                                 ->end()

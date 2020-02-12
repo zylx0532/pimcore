@@ -22,6 +22,9 @@ use Pimcore\Model\Tool;
 
 /**
  * @method Rule\Dao getDao()
+ * @method void save()
+ * @method void update()
+ * @method void delete()
  */
 class Rule extends Model\AbstractModel
 {
@@ -71,7 +74,7 @@ class Rule extends Model\AbstractModel
     public $actions = [];
 
     /**
-     * @param $target
+     * @param mixed $target
      *
      * @return bool
      */
@@ -108,8 +111,7 @@ class Rule extends Model\AbstractModel
     {
         try {
             $target = new self();
-            $target->setId(intval($id));
-            $target->getDao()->getById();
+            $target->getDao()->getById(intval($id));
 
             return $target;
         } catch (\Exception $e) {
@@ -118,7 +120,7 @@ class Rule extends Model\AbstractModel
     }
 
     /**
-     * @param $name
+     * @param string $name
      *
      * @return null|Rule
      */
@@ -126,8 +128,7 @@ class Rule extends Model\AbstractModel
     {
         try {
             $target = new self();
-            $target->setName($name);
-            $target->getDao()->getByName();
+            $target->getDao()->getByName($name);
 
             return $target;
         } catch (\Exception $e) {
@@ -136,7 +137,7 @@ class Rule extends Model\AbstractModel
     }
 
     /**
-     * @param $description
+     * @param string $description
      *
      * @return $this
      */
@@ -156,7 +157,7 @@ class Rule extends Model\AbstractModel
     }
 
     /**
-     * @param $id
+     * @param int $id
      *
      * @return $this
      */
@@ -176,7 +177,7 @@ class Rule extends Model\AbstractModel
     }
 
     /**
-     * @param $name
+     * @param string $name
      *
      * @return $this
      */
@@ -220,7 +221,7 @@ class Rule extends Model\AbstractModel
     }
 
     /**
-     * @param $conditions
+     * @param array $conditions
      *
      * @return $this
      */

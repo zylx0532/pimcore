@@ -22,13 +22,18 @@ use Pimcore\Model;
 /**
  * @method \Pimcore\Model\Element\Dao getDao()
  */
-abstract class AbstractElement extends Model\AbstractModel implements ElementInterface
+abstract class AbstractElement extends Model\AbstractModel implements ElementInterface, ElementDumpStateInterface
 {
+    use ElementDumpStateTrait;
+
     /**
      * @var int
      */
     protected $__dataVersionTimestamp = null;
 
+    /**
+     * @internal
+     */
     protected function updateModificationInfos()
     {
         $this->setVersionCount($this->getDao()->getVersionCountForUpdate() + 1);
@@ -81,7 +86,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     }
 
     /**
-     * @param  $name
+     * @param string $name
      *
      * @return bool
      */
@@ -93,7 +98,12 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     }
 
     /**
-     * @param  $name
+     * @param Model\Property[] $properties
+     */
+    abstract public function setProperties($properties);
+
+    /**
+     * @param string $name
      */
     public function removeProperty($name)
     {
@@ -138,15 +148,17 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
      */
     public function resolveDependencies()
     {
-        $dependencies = [];
+        $dependencies = [[]];
 
         // check for properties
         if (method_exists($this, 'getProperties')) {
             $properties = $this->getProperties();
             foreach ($properties as $property) {
-                $dependencies = array_merge($dependencies, $property->resolveDependencies());
+                $dependencies[] = $property->resolveDependencies();
             }
         }
+
+        $dependencies = array_merge(...$dependencies);
 
         return $dependencies;
     }
@@ -165,6 +177,11 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
         // check for inherited
         return $this->getDao()->isLocked();
     }
+
+    /**
+     * @return string
+     */
+    abstract public function getLocked();
 
     /**
      * @return array
@@ -189,18 +206,30 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
      * This is used for user-permissions, pass a permission type (eg. list, view, save) an you know if the current user is allowed to perform the requested action
      *
      * @param string $type
+     * @param null|Model\User\AbstractUser $user
      *
      * @return bool
      */
-    public function isAllowed($type)
+    public function isAllowed($type, ?Model\User\AbstractUser $user = null)
     {
-        $currentUser = \Pimcore\Tool\Admin::getCurrentUser();
+        if (null === $user) {
+            $user = \Pimcore\Tool\Admin::getCurrentUser();
+        }
+
+        if (!$user) {
+            if (php_sapi_name() === 'cli') {
+                return true;
+            }
+
+            return false;
+        }
+
         //everything is allowed for admin
-        if ($currentUser->isAdmin()) {
+        if ($user->isAdmin()) {
             return true;
         }
 
-        return $this->getDao()->isAllowed($type, $currentUser);
+        return $this->getDao()->isAllowed($type, $user);
     }
 
     public function unlockPropagate()
@@ -257,7 +286,7 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
     }
 
     /**
-     * @param null $versionNote
+     * @param string|null $versionNote
      * @param bool $saveOnlyVersion
      *
      * @return Model\Version
@@ -289,4 +318,9 @@ abstract class AbstractElement extends Model\AbstractModel implements ElementInt
 
         return $version;
     }
+
+    /**
+     * @return Model\Dependency
+     */
+    public abstract function getDependencies();
 }

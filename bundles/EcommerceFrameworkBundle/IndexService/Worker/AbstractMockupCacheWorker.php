@@ -15,7 +15,7 @@
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Worker;
 
 use Pimcore\Bundle\EcommerceFrameworkBundle\Exception\InvalidConfigException;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IMockupConfig;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\MockupConfigInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\DefaultMockup;
 use Pimcore\Cache;
 use Pimcore\Logger;
@@ -35,7 +35,7 @@ abstract class AbstractMockupCacheWorker extends AbstractBatchProcessingWorker
     /**
      * creates mockup cache key
      *
-     * @param $objectId
+     * @param int $objectId
      *
      * @return string
      */
@@ -47,7 +47,7 @@ abstract class AbstractMockupCacheWorker extends AbstractBatchProcessingWorker
     /**
      * deletes element from mockup cache
      *
-     * @param $objectId
+     * @param int $objectId
      */
     protected function deleteFromMockupCache($objectId)
     {
@@ -58,8 +58,8 @@ abstract class AbstractMockupCacheWorker extends AbstractBatchProcessingWorker
     /**
      * updates mockup cache, delegates creation of mockup object to tenant config
      *
-     * @param $objectId
-     * @param null $data
+     * @param int $objectId
+     * @param array|null $data
      *
      * @return DefaultMockup
      *
@@ -72,10 +72,10 @@ abstract class AbstractMockupCacheWorker extends AbstractBatchProcessingWorker
             $data = json_decode($data, true);
         }
 
-        if ($this->tenantConfig instanceof IMockupConfig) {
+        if ($this->tenantConfig instanceof MockupConfigInterface) {
             $mockup = $this->tenantConfig->createMockupObject($objectId, $data['data'], $data['relations']);
         } else {
-            throw new InvalidConfigException('Tenant Config is not instance of IMockupConfig');
+            throw new InvalidConfigException('Tenant Config is not instance of MockupConfigInterface');
         }
 
         $key = $this->createMockupCacheKey($objectId);
@@ -105,7 +105,7 @@ abstract class AbstractMockupCacheWorker extends AbstractBatchProcessingWorker
     /**
      * gets mockup from cache and if not in cache, adds it to cache
      *
-     * @param $objectId
+     * @param int $objectId
      *
      * @return DefaultMockup
      */

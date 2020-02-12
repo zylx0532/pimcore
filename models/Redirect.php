@@ -107,6 +107,20 @@ class Redirect extends AbstractModel
     public $modificationDate;
 
     /**
+     * ID of the owner user
+     *
+     * @var int
+     */
+    protected $userOwner;
+
+    /**
+     * ID of the user who make the latest changes
+     *
+     * @var int
+     */
+    protected $userModification;
+
+    /**
      * StatusCodes
      */
     public static $statusCodes = [
@@ -122,13 +136,16 @@ class Redirect extends AbstractModel
      *
      * @return Redirect
      */
-    public static function getById($id, bool $throwOnInvalid = false)
+    public static function getById($id)
     {
-        $redirect = new self();
-        $redirect->setId(intval($id));
-        $redirect->getDao()->getById(null, $throwOnInvalid);
+        try {
+            $redirect = new self();
+            $redirect->getDao()->getById($id);
 
-        return $redirect;
+            return $redirect;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
@@ -291,7 +308,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $expiry
+     * @param int|string $expiry
      *
      * @return $this
      */
@@ -327,7 +344,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $regex
+     * @param bool $regex
      *
      * @return $this
      */
@@ -351,7 +368,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $active
+     * @param bool $active
      *
      * @return $this
      */
@@ -367,7 +384,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $sourceSite
+     * @param int $sourceSite
      *
      * @return $this
      */
@@ -391,7 +408,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $targetSite
+     * @param int $targetSite
      *
      * @return $this
      */
@@ -415,7 +432,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $passThroughParameters
+     * @param bool $passThroughParameters
      *
      * @return Redirect
      */
@@ -439,7 +456,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $modificationDate
+     * @param int $modificationDate
      *
      * @return $this
      */
@@ -459,7 +476,7 @@ class Redirect extends AbstractModel
     }
 
     /**
-     * @param $creationDate
+     * @param int $creationDate
      *
      * @return $this
      */
@@ -476,6 +493,38 @@ class Redirect extends AbstractModel
     public function getCreationDate()
     {
         return $this->creationDate;
+    }
+
+    /**
+     * @return int
+     */
+    public function getUserOwner()
+    {
+        return $this->userOwner;
+    }
+
+    /**
+     * @param int $userOwner
+     */
+    public function setUserOwner($userOwner)
+    {
+        $this->userOwner = $userOwner;
+    }
+
+    /**
+     * @return int
+     */
+    public function getUserModification()
+    {
+        return $this->userModification;
+    }
+
+    /**
+     * @param int $userModification
+     */
+    public function setUserModification($userModification)
+    {
+        $this->userModification = $userModification;
     }
 
     public function save()

@@ -14,15 +14,23 @@
 
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\FilterService\FilterType;
 
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\IProductList;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\ProductListInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractFilterDefinitionType;
 use Pimcore\Logger;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\Fieldcollection\Data\FilterRelation;
 use Pimcore\Model\DataObject\Folder;
 
 class SelectRelation extends AbstractFilterType
 {
-    public function getFilterFrontend(AbstractFilterDefinitionType $filterDefinition, IProductList $productList, $currentFilter)
+    /**
+     * @param FilterRelation $filterDefinition
+     * @param ProductListInterface $productList
+     * @param array $currentFilter
+     * @return string
+     * @throws \Exception
+     */
+    public function getFilterFrontend(AbstractFilterDefinitionType $filterDefinition, ProductListInterface $productList, $currentFilter)
     {
         $field = $this->getField($filterDefinition);
 
@@ -74,14 +82,23 @@ class SelectRelation extends AbstractFilterType
         return $availableRelationsArray;
     }
 
-    public function addCondition(AbstractFilterDefinitionType $filterDefinition, IProductList $productList, $currentFilter, $params, $isPrecondition = false)
+    /**
+     * @param FilterRelation $filterDefinition
+     * @param ProductListInterface $productList
+     * @param array $currentFilter
+     * @param array $params
+     * @param bool $isPrecondition
+     * @return array
+     */
+    public function addCondition(AbstractFilterDefinitionType $filterDefinition, ProductListInterface $productList, $currentFilter, $params, $isPrecondition = false)
     {
         $field = $this->getField($filterDefinition);
         $preSelect = $this->getPreSelect($filterDefinition);
 
-        $value = $params[$field];
+        $value = $params[$field] ?? null;
+        $isReload = $params['is_reload'] ?? null;
 
-        if (empty($value) && !$params['is_reload']) {
+        if (empty($value) && !$isReload) {
             $o = $preSelect;
             if (!empty($o)) {
                 if (is_object($o)) {
@@ -97,11 +114,7 @@ class SelectRelation extends AbstractFilterType
         $currentFilter[$field] = $value;
 
         if (!empty($value)) {
-            //            if($isPrecondition) {
-            //                $productList->addRelationCondition("PRECONDITION_" . $filterDefinition->getField(),  "dest = " . $productList->quote($value));
-            //            } else {
             $productList->addRelationCondition($field, 'dest = ' . $productList->quote($value));
-            //            }
         }
 
         return $currentFilter;

@@ -21,26 +21,30 @@ use Pimcore\Model;
 
 /**
  * @method \Pimcore\Model\Staticroute\Listing\Dao getDao()
+ * @method \Pimcore\Model\Staticroute[] load()
+ * @method int getTotalCount()
  */
 class Listing extends Model\Listing\JsonListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Staticroute
-     *
-     * @var array
+     * @var \Pimcore\Model\Staticroute[]|null
      */
-    public $routes = [];
+    protected $routes = null;
 
     /**
-     * @return array
+     * @return \Pimcore\Model\Staticroute[]
      */
     public function getRoutes()
     {
+        if ($this->routes === null) {
+            $this->getDao()->load();
+        }
+
         return $this->routes;
     }
 
     /**
-     * @param array $routes
+     * @param \Pimcore\Model\Staticroute[]|null $routes
      *
      * @return $this
      */

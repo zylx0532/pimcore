@@ -21,6 +21,9 @@ use Symfony\Bundle\FrameworkBundle\Translation\Translator;
 use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
 use Symfony\Component\HttpKernel\KernelInterface;
 
+/**
+ * @deprecated
+ */
 class CookiePolicyNoticeListener
 {
     use ResponseInjectionTrait;
@@ -83,7 +86,7 @@ class CookiePolicyNoticeListener
     }
 
     /**
-     * @param $code
+     * @param string $code
      */
     public function setTemplateCode($code)
     {
@@ -173,13 +176,13 @@ class CookiePolicyNoticeListener
                             (function () {
                                 var ls = window["localStorage"];
                                 if(ls && !ls.getItem("pc-cookie-accepted")) {
-            
+
                                     var code = ' . $templateCode . ';
                                     var ci = window.setInterval(function () {
                                         if(document.body) {
                                             clearInterval(ci);
                                             document.body.insertAdjacentHTML("beforeend", code);
-            
+
                                             document.getElementById("pc-button").onclick = function () {
                                                 document.getElementById("pc-cookie-notice").style.display = "none";
                                                 ls.setItem("pc-cookie-accepted", "true");

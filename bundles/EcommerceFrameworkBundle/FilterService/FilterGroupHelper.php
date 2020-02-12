@@ -14,8 +14,8 @@
 
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\FilterService;
 
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\IProductList;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Worker\IWorker;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList\ProductListInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Worker\WorkerInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 
 /**
@@ -36,7 +36,7 @@ class FilterGroupHelper
      *
      * might be overwritten, if new column groups are necessary
      *
-     * @param $columnGroup
+     * @param string $columnGroup
      *
      * @return string
      */
@@ -48,13 +48,13 @@ class FilterGroupHelper
     /**
      * returns all possible group by values for given column group, product list and field combination
      *
-     * @param $columnGroup
-     * @param IProductList $productList
+     * @param string $columnGroup
+     * @param ProductListInterface $productList
      * @param string $field
      *
      * @return array
      */
-    public function getGroupByValuesForFilterGroup($columnGroup, IProductList $productList, $field)
+    public function getGroupByValuesForFilterGroup($columnGroup, ProductListInterface $productList, $field)
     {
         $columnType = $this->getColumnTypeForColumnGroup($columnGroup);
 
@@ -83,7 +83,7 @@ class FilterGroupHelper
             sort($values);
 
             foreach ($values as $v) {
-                $helper = explode(IWorker::MULTISELECT_DELIMITER, $v);
+                $helper = explode(WorkerInterface::MULTISELECT_DELIMITER, $v);
                 foreach ($helper as $h) {
                     $data[$h] = ['key' => $h, 'value' => $h];
                 }

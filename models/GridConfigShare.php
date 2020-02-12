@@ -18,7 +18,7 @@
 namespace Pimcore\Model;
 
 /**
- * @method \Pimcore\Model\Version\Dao getDao()
+ * @method \Pimcore\Model\GridConfigShare\Dao getDao()
  */
 class GridConfigShare extends AbstractModel
 {
@@ -33,8 +33,8 @@ class GridConfigShare extends AbstractModel
     public $sharedWithUserId;
 
     /**
-     * @param $gridConfigId
-     * @param $sharedWithUserId
+     * @param int $gridConfigId
+     * @param int $sharedWithUserId
      *
      * @return GridConfigShare
      */

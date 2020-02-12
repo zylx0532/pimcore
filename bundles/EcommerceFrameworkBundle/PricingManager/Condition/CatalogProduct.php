@@ -15,11 +15,12 @@
 namespace Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\Condition;
 
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractProduct;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\ICheckoutable;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\ICondition;
-use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\IEnvironment;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\CheckoutableInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\ConditionInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\PricingManager\EnvironmentInterface;
+use Pimcore\Model\DataObject\Concrete;
 
-class CatalogProduct extends AbstractObjectListCondition implements ICatalogProduct
+class CatalogProduct extends AbstractObjectListCondition implements CatalogProductInterface
 {
     /**
      * @var AbstractProduct[]
@@ -34,11 +35,11 @@ class CatalogProduct extends AbstractObjectListCondition implements ICatalogProd
     protected $productIds = [];
 
     /**
-     * @param IEnvironment $environment
+     * @param EnvironmentInterface $environment
      *
      * @return bool
      */
-    public function check(IEnvironment $environment)
+    public function check(EnvironmentInterface $environment)
     {
         // init
         $productsPool = [];
@@ -49,7 +50,7 @@ class CatalogProduct extends AbstractObjectListCondition implements ICatalogProd
         }
 
         // products from cart
-        if ($environment->getExecutionMode() === IEnvironment::EXECUTION_MODE_CART && $environment->getCart()) {
+        if ($environment->getExecutionMode() === EnvironmentInterface::EXECUTION_MODE_CART && $environment->getCart()) {
             foreach ($environment->getCart()->getItems() as $item) {
                 $productsPool[] = $item->getProduct();
             }
@@ -61,8 +62,9 @@ class CatalogProduct extends AbstractObjectListCondition implements ICatalogProd
             foreach ($this->getProducts() as $product) {
                 /* @var AbstractProduct $product */
 
+                /** @var Concrete $currentProductCheck */
                 $currentProductCheck = $currentProduct;
-                while ($currentProductCheck instanceof ICheckoutable) {
+                while ($currentProductCheck instanceof CheckoutableInterface) {
                     if ($currentProductCheck->getId() === $product->getId()) {
                         return true;
                     }
@@ -100,7 +102,7 @@ class CatalogProduct extends AbstractObjectListCondition implements ICatalogProd
     /**
      * @param string $string
      *
-     * @return ICondition
+     * @return ConditionInterface
      */
     public function fromJSON($string)
     {
@@ -139,7 +141,7 @@ class CatalogProduct extends AbstractObjectListCondition implements ICatalogProd
     /**
      * @param AbstractProduct[] $products
      *
-     * @return ICatalogProduct
+     * @return CatalogProductInterface
      */
     public function setProducts(array $products)
     {

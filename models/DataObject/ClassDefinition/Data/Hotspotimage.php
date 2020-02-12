@@ -329,10 +329,11 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     }
 
     /**
-
      * @param DataObject\Data\Hotspotimage $data
      * @param null|Model\DataObject\AbstractObject $object
      * @param mixed $params
+     *
+     * @return DataObject\Data\Hotspotimage
      */
     public function getDataFromGridEditor($data, $object = null, $params = [])
     {
@@ -342,8 +343,8 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     /**
      * @see Data::getVersionPreview
      *
-     * @param Asset\Image $data
-     * @param null|DataObject\AbstractObject $object
+     * @param DataObject\Data\Hotspotimage|null $data
+     * @param null|DataObject\Concrete $object
      * @param mixed $params
      *
      * @return string|null
@@ -366,6 +367,8 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
      * @param array $params
      *
      * @return string
+     *
+     * @throws \Exception
      */
     public function getForCsvExport($object, $params = [])
     {
@@ -379,7 +382,7 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
 
     /**
      * @param string $importValue
-     * @param null|Model\DataObject\AbstractObject $object
+     * @param null|DataObject\Concrete $object
      * @param mixed $params
      *
      * @return mixed|null|DataObject\ClassDefinition\Data
@@ -396,7 +399,7 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     }
 
     /**
-     * @param $object
+     * @param DataObject\Concrete|DataObject\Objectbrick\Data\AbstractData|DataObject\Fieldcollection\Data\AbstractData $object
      * @param mixed $params
      *
      * @return string
@@ -454,7 +457,7 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     }
 
     /**
-     * @param mixed $data
+     * @param DataObject\Data\Hotspotimage|null $data
      *
      * @return array
      */
@@ -499,10 +502,14 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     /**
      * converts data to be exposed via webservices
      *
+     * @deprecated
+     *
      * @param string $object
      * @param mixed $params
      *
      * @return mixed
+     *
+     * @throws \Exception
      */
     public function getForWebserviceExport($object, $params = [])
     {
@@ -511,8 +518,9 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
         $dataForResource = $this->getDataForResource($data, $object, $params);
 
         if ($dataForResource) {
-            if ($dataForResource['image__hotspots']) {
-                $dataForResource['image__hotspots'] = Serialize::unserialize($dataForResource['image__hotspots']);
+            $hotspotsKey = "{$this->getName()}__hotspots";
+            if ($dataForResource[$hotspotsKey]) {
+                $dataForResource[$hotspotsKey] = Serialize::unserialize($dataForResource[$hotspotsKey]);
             }
 
             return $dataForResource;
@@ -522,10 +530,12 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     }
 
     /**
+     * @deprecated
+     *
      * @param mixed $value
-     * @param null $object
+     * @param DataObject\Concrete|null $object
      * @param array $params
-     * @param null $idMapper
+     * @param Model\Webservice\IdMapperInterface|null $idMapper
      *
      * @return null|Asset|DataObject\Data\Hotspotimage
      *
@@ -536,17 +546,20 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
         if (!is_null($value)) {
             $value = json_decode(json_encode($value), true);
 
-            if ($value['image__image']) {
-                $value['image__image'] = $idMapper ? $idMapper->getMappedId('asset', $value['image__image']) : $value['image__image'] ;
+            $imageKey = "{$this->getName()}__image";
+
+            if ($value[$imageKey]) {
+                $value[$imageKey] = $idMapper ? $idMapper->getMappedId('asset', $value[$imageKey]) : $value[$imageKey] ;
             }
         }
 
-        if (is_array($value) && isset($value['image__hotspots']) && $value['image__hotspots']) {
-            $value['image__hotspots'] = serialize($value['image__hotspots']);
+        $hotspotsKey = "{$this->getName()}__hotspots";
+        if (is_array($value) && isset($value[$hotspotsKey]) && $value[$hotspotsKey]) {
+            $value[$hotspotsKey] = serialize($value[$hotspotsKey]);
         }
         $hotspotImage = $this->getDataFromResource($value);
 
-        /** @var $hotspotImage DataObject\Data\Hotspotimage */
+        /** @var DataObject\Data\Hotspotimage $hotspotImage */
         if (!$hotspotImage) {
             return null;
         }
@@ -573,11 +586,13 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
                 $idMapper->recordMappingFailure('object', $object->getId(), 'asset', $value);
             }
         }
+
+        return null;
     }
 
     /**
-     * @param $data
-     * @param null $object
+     * @param DataObject\Data\Hotspotimage|null $data
+     * @param DataObject\Concrete|null $object
      * @param mixed $params
      *
      * @return null
@@ -603,6 +618,8 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
      * @param array $params
      *
      * @return Element\ElementInterface
+     *
+     * @throws \Exception
      */
     public function rewriteIds($object, $idMapping, $params = [])
     {
@@ -637,8 +654,8 @@ class Hotspotimage extends Model\DataObject\ClassDefinition\Data\Image
     }
 
     /**
-     * @param $dataArray
-     * @param $idMapping
+     * @param array|null $dataArray
+     * @param array $idMapping
      *
      * @return array
      */

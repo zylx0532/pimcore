@@ -50,7 +50,7 @@ class TargetGroup extends Model\AbstractModel
     public $active = true;
 
     /**
-     * @param $id
+     * @param int $id
      *
      * @return null|TargetGroup
      */
@@ -58,8 +58,7 @@ class TargetGroup extends Model\AbstractModel
     {
         try {
             $targetGroup = new self();
-            $targetGroup->setId(intval($id));
-            $targetGroup->getDao()->getById();
+            $targetGroup->getDao()->getById(intval($id));
 
             return $targetGroup;
         } catch (\Exception $e) {
@@ -67,12 +66,16 @@ class TargetGroup extends Model\AbstractModel
         }
     }
 
+    /**
+     * @param string $name
+     *
+     * @return TargetGroup|null
+     */
     public static function getByName($name)
     {
         try {
             $target = new self();
-            $target->setName($name);
-            $target->getDao()->getByName();
+            $target->getDao()->getByName($name);
 
             return $target;
         } catch (\Exception $e) {
@@ -81,7 +84,7 @@ class TargetGroup extends Model\AbstractModel
     }
 
     /**
-     * @param $id
+     * @param int $id
      *
      * @return bool
      */
@@ -97,7 +100,7 @@ class TargetGroup extends Model\AbstractModel
     }
 
     /**
-     * @param $description
+     * @param string $description
      *
      * @return $this
      */
@@ -117,7 +120,7 @@ class TargetGroup extends Model\AbstractModel
     }
 
     /**
-     * @param $id
+     * @param int $id
      *
      * @return $this
      */
@@ -137,7 +140,7 @@ class TargetGroup extends Model\AbstractModel
     }
 
     /**
-     * @param $name
+     * @param string $name
      *
      * @return $this
      */

@@ -25,20 +25,24 @@ use Pimcore\Model;
 class Listing extends Model\Listing\JsonListing
 {
     /**
-     * @var array
+     * @var Model\Tool\CustomReport\Config[]|null
      */
-    public $reports = [];
+    protected $reports = null;
 
     /**
-     * @return array
+     * @return Model\Tool\CustomReport\Config[]
      */
     public function getReports()
     {
+        if ($this->reports === null) {
+            $this->getDao()->load();
+        }
+
         return $this->reports;
     }
 
     /**
-     * @param $reports
+     * @param Model\Tool\CustomReport\Config[]|null $reports
      *
      * @return $this
      */

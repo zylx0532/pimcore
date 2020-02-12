@@ -20,26 +20,29 @@ namespace Pimcore\Model\Metadata\Predefined;
 /**
  * @method \Pimcore\Model\Metadata\Predefined\Listing\Dao getDao()
  * @method \Pimcore\Model\Metadata\Predefined[] load()
+ * @method int getTotalCount()
  */
 class Listing extends \Pimcore\Model\Listing\JsonListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Metadata\Predefined
-     *
-     * @var array
+     * @var \Pimcore\Model\Metadata\Predefined[]|null
      */
-    public $definitions = [];
+    protected $definitions = null;
 
     /**
-     * @return array
+     * @return \Pimcore\Model\Metadata\Predefined[]
      */
     public function getDefinitions()
     {
+        if ($this->definitions === null) {
+            $this->getDao()->load();
+        }
+
         return $this->definitions;
     }
 
     /**
-     * @param $definitions
+     * @param \Pimcore\Model\Metadata\Predefined[]|null $definitions
      *
      * @return $this
      */
@@ -51,8 +54,8 @@ class Listing extends \Pimcore\Model\Listing\JsonListing
     }
 
     /**
-     * @param $type
-     * @param $subTypes
+     * @param string $type
+     * @param array $subTypes
      *
      * @return \Pimcore\Model\Metadata\Predefined[]
      *
@@ -89,11 +92,11 @@ class Listing extends \Pimcore\Model\Listing\JsonListing
     }
 
     /**
-     * @param $key
-     * @param $language
-     * @param null $targetSubtype
+     * @param string $key
+     * @param string $language
+     * @param string|null $targetSubtype
      *
-     * @return \Pimcore\Model\Metadata\Predefined
+     * @return \Pimcore\Model\Metadata\Predefined|null
      */
     public static function getByKeyAndLanguage($key, $language, $targetSubtype = null)
     {

@@ -22,33 +22,37 @@ use Pimcore\Model;
 /**
  * @method \Pimcore\Model\Schedule\Task\Listing\Dao getDao()
  * @method Model\Schedule\Task[] load()
+ * @method Model\Schedule\Task current()
  */
 class Listing extends Model\Listing\AbstractListing
 {
     /**
-     * Contains the results of the list. They are all an instance of Schedule\Task
+     * @var Model\Schedule\Task[]|null
      *
-     * @var array
+     * @deprecated use getter/setter methods or $this->data
      */
-    public $tasks = [];
+    protected $tasks = null;
 
-    /**
-     * @return array
-     */
-    public function getTasks()
+    public function __construct()
     {
-        return $this->tasks;
+        $this->tasks = & $this->data;
     }
 
     /**
-     * @param array $tasks
+     * @return Model\Schedule\Task[]
+     */
+    public function getTasks()
+    {
+        return $this->getData();
+    }
+
+    /**
+     * @param Model\Schedule\Task[]|null $tasks
      *
      * @return $this
      */
     public function setTasks($tasks)
     {
-        $this->tasks = $tasks;
-
-        return $this;
+        return $this->setData($tasks);
     }
 }

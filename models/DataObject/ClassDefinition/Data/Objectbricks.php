@@ -20,6 +20,7 @@ use Pimcore\Logger;
 use Pimcore\Model;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\Objectbrick;
 use Pimcore\Model\Webservice;
 use Pimcore\Tool;
 
@@ -37,7 +38,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
      *
      * @var string
      */
-    public $phpdocType = '\\Pimcore\\Model\\DataObject\\Objectbrick';
+    public $phpdocType = '\\' . Objectbrick::class;
 
     /**
      * @var array
@@ -55,7 +56,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     public $border = false;
 
     /**
-     * @param $maxItems
+     * @param string|int|null $maxItems
      *
      * @return $this
      */
@@ -112,9 +113,9 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                     'objectFromVersion' => $params['objectFromVersion'],
                     'context' => [
                         'containerType' => 'objectbrick',
-                        'containerKey' => $allowedBrickType],
-                        'fieldname' => $this->getName()
-
+                        'containerKey' => $allowedBrickType,
+                    ],
+                    'fieldname' => $this->getName(),
                 ];
 
                 $editmodeData[] = $this->doGetDataForEditmode($getter, $data, $params, $allowedBrickType);
@@ -125,18 +126,21 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $getter
-     * @param $data
-     * @param $params
-     * @param $allowedBrickType
+     * @param string $getter
+     * @param Objectbrick\Data\AbstractData $data
+     * @param array|null $params
+     * @param string $allowedBrickType
      * @param int $level
      *
      * @return array
      */
     private function doGetDataForEditmode($getter, $data, $params, $allowedBrickType, $level = 0)
     {
-        $parent = DataObject\Service::hasInheritableParentObject($data->getObject());
-        /** @var $item DataObject\Objectbrick\Definition */
+        $object = $data->getObject();
+        if ($object) {
+            $parent = DataObject\Service::hasInheritableParentObject($object);
+        }
+        /** @var DataObject\Objectbrick\Definition $item */
         $item = $data->$getter();
         if (!$item && !empty($parent)) {
             $data = $parent->{'get' . ucfirst($this->getName())}();
@@ -148,9 +152,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
             return null;
         }
 
-        try {
-            $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-        } catch (\Exception $e) {
+        if (!$collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
             return null;
         }
 
@@ -162,24 +164,21 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
             if (!$fd instanceof CalculatedValue) {
                 $fieldData = $this->getDataForField($item, $fd->getName(), $fd, $level, $data->getObject(), $getter, $params);
                 $brickData[$fd->getName()] = $fieldData->objectData;
-            }
-
-            $brickMetaData[$fd->getName()] = $fieldData->metaData;
-            if ($fieldData->metaData['inherited'] == true) {
-                $inherited = true;
+                $brickMetaData[$fd->getName()] = $fieldData->metaData;
+                if ($fieldData->metaData['inherited'] == true) {
+                    $inherited = true;
+                }
             }
         }
 
         $calculatedChilds = [];
         self::collectCalculatedValueItems($collectionDef->getFieldDefinitions(), $calculatedChilds);
 
-        if ($calculatedChilds) {
-            foreach ($calculatedChilds as $fd) {
-                $fieldData = new DataObject\Data\CalculatedValue($fd->getName());
-                $fieldData->setContextualData('objectbrick', $this->getName(), $allowedBrickType, $fd->getName(), null, null, $fd);
-                $fieldData = $fd->getDataForEditmode($fieldData, $data->getObject(), $params);
-                $brickData[$fd->getName()] = $fieldData;
-            }
+        foreach ($calculatedChilds as $fd) {
+            $fieldData = new DataObject\Data\CalculatedValue($fd->getName());
+            $fieldData->setContextualData('objectbrick', $this->getName(), $allowedBrickType, $fd->getName(), null, null, $fd);
+            $fieldData = $fd->getDataForEditmode($fieldData, $data->getObject(), $params);
+            $brickData[$fd->getName()] = $fieldData;
         }
 
         $brickDefinition = DataObject\Objectbrick\Definition::getByKey($allowedBrickType);
@@ -199,37 +198,45 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
      * gets recursively attribute data from parent and fills objectData and metaData
      *
      * @param $item
-     * @param $key
-     * @param $fielddefinition
-     * @param $level
-     * @param $baseObject
+     * @param string $key
+     * @param Data $fielddefinition
+     * @param int $level
+     * @param DataObject\Concrete|null $baseObject
      * @param $getter
-     * @param $params
+     * @param array|null $params
      *
      * @return mixed
      */
     private function getDataForField($item, $key, $fielddefinition, $level, $baseObject, $getter, $params)
     {
         $result = new \stdClass();
-        $parent = DataObject\Service::hasInheritableParentObject($baseObject);
+        if ($baseObject) {
+            $parent = DataObject\Service::hasInheritableParentObject($baseObject);
+        }
         $valueGetter = 'get' . ucfirst($key);
 
-        // relations but not for objectsMetadata, because they have additional data which cannot be loaded directly from the DB
-        if (!$params['objectFromVersion'] && method_exists($fielddefinition, 'getLazyLoading')
+        // Editmode optimization for lazy loaded relations except metadata relations because they have additional data
+        // which cannot be loaded directly from the DB.
+        // Note that this is just for AbstractRelations, not for all LazyLoadingSupportInterface types.
+        // It tries to optimize fetching the data needed for the editmode without loading the entire target element.
+
+        if ((!isset($params['objectFromVersion']) || !$params['objectFromVersion'])
+            && ($fielddefinition instanceof Data\Relations\AbstractRelations)
             && $fielddefinition->getLazyLoading()
-            && !$fielddefinition instanceof DataObject\ClassDefinition\Data\AdvancedManyToManyObjectRelation
-            && !$fielddefinition instanceof DataObject\ClassDefinition\Data\AdvancedManyToManyRelation
-            && !$fielddefinition instanceof DataObject\ClassDefinition\Data\Block) {
+            && !$fielddefinition instanceof ManyToManyObjectRelation
+            && !$fielddefinition instanceof AdvancedManyToManyRelation
+            && !$fielddefinition instanceof Block) {
 
             //lazy loading data is fetched from DB differently, so that not every relation object is instantiated
-            if ($fielddefinition->isRemoteOwner()) {
+            if ($fielddefinition instanceof ReverseManyToManyObjectRelation) {
                 $refKey = $fielddefinition->getOwnerFieldName();
                 $refId = $fielddefinition->getOwnerClassId();
             } else {
                 $refKey = $key;
+                $refId = null;
             }
 
-            $relations = $item->getRelationData($refKey, !$fielddefinition->isRemoteOwner(), $refId);
+            $relations = $item->getRelationData($refKey, !$fielddefinition instanceof ReverseManyToManyObjectRelation, $refId);
             if (empty($relations) && !empty($parent)) {
                 $parentItem = $parent->{'get' . ucfirst($this->getName())}();
                 if (!empty($parentItem)) {
@@ -241,21 +248,18 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
             }
             $data = [];
 
-            if ($fielddefinition instanceof DataObject\ClassDefinition\Data\Href) {
+            if ($fielddefinition instanceof ManyToOneRelation) {
                 $data = $relations[0];
             } else {
                 foreach ($relations as $rel) {
-                    if ($fielddefinition instanceof DataObject\ClassDefinition\Data\ManyToManyObjectRelation) {
-                        $data[] = ['id' => $rel['id'], 'fullpath' => $rel['path'], 'subtype' => $rel['subtype'], 'published' => ($rel['published'] ? true : false)];
-                    } else {
-                        $data[] = ['id' => $rel['id'], 'fullpath' => $rel['path'],  'type' => $rel['type'], 'subtype' => $rel['subtype'], 'published' => ($rel['published'] ? true : false)];
-                    }
+                    $data[] = ['id' => $rel['id'], 'fullpath' => $rel['path'],  'type' => $rel['type'], 'subtype' => $rel['subtype'], 'published' => ($rel['published'] ? true : false)];
                 }
             }
             $result->objectData = $data;
             $result->metaData['objectid'] = $baseObject->getId();
             $result->metaData['inherited'] = $level != 0;
         } else {
+            $fieldValue = null;
             $editmodeValue = null;
             if (!empty($item)) {
                 $fieldValue = $item->$valueGetter();
@@ -272,7 +276,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                 }
             }
             $result->objectData = $editmodeValue;
-            $result->metaData['objectid'] = $baseObject->getId();
+            $result->metaData['objectid'] = $baseObject ? $baseObject->getId() : null;
             $result->metaData['inherited'] = $level != 0;
         }
 
@@ -283,10 +287,10 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
      * @see Data::getDataFromEditmode
      *
      * @param string $data
-     * @param null|Model\DataObject\AbstractObject $object
+     * @param null|DataObject\Concrete $object
      * @param mixed $params
      *
-     * @return string
+     * @return Objectbrick\Data\AbstractData
      */
     public function getDataFromEditmode($data, $object = null, $params = [])
     {
@@ -343,8 +347,8 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     /**
      * @see Data::getVersionPreview
      *
-     * @param string $data
-     * @param null|DataObject\AbstractObject $object
+     * @param Objectbrick\Data\AbstractData|null $data
+     * @param null|DataObject\Concrete $object
      * @param mixed $params
      *
      * @return string
@@ -371,7 +375,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
 
     /**
      * @param string $importValue
-     * @param null|Model\DataObject\AbstractObject $object
+     * @param null|DataObject\Concrete $object
      * @param mixed $params
      *
      * @return null
@@ -382,7 +386,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $object
+     * @param DataObject\Concrete $object
      * @param mixed $params
      *
      * @return string
@@ -399,14 +403,10 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                     continue;
                 }
 
-                try {
-                    $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-                } catch (\Exception $e) {
-                    continue;
-                }
-
-                foreach ($collectionDef->getFieldDefinitions() as $fd) {
-                    $dataString .= $fd->getDataForSearchIndex($item, $params) . ' ';
+                if ($collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
+                    foreach ($collectionDef->getFieldDefinitions() as $fd) {
+                        $dataString .= $fd->getDataForSearchIndex($item, $params) . ' ';
+                    }
                 }
             }
         }
@@ -415,7 +415,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $object
+     * @param DataObject\Concrete $object
      * @param array $params
      */
     public function save($object, $params = [])
@@ -427,7 +427,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $object
+     * @param DataObject\Concrete $object
      * @param array $params
      *
      * @return null
@@ -447,7 +447,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $object
+     * @param DataObject\Concrete $object
      * @param array $params
      */
     public function delete($object, $params = [])
@@ -467,7 +467,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $allowedTypes
+     * @param string|array|null $allowedTypes
      *
      * @return $this
      */
@@ -479,9 +479,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
 
         if (is_array($allowedTypes)) {
             for ($i = 0; $i < count($allowedTypes); $i++) {
-                try {
-                    DataObject\Objectbrick\Definition::getByKey($allowedTypes[$i]);
-                } catch (\Exception $e) {
+                if (!DataObject\Objectbrick\Definition::getByKey($allowedTypes[$i])) {
                     Logger::warn("Removed unknown allowed type [ $allowedTypes[$i] ] from allowed types of object brick");
                     unset($allowedTypes[$i]);
                 }
@@ -495,6 +493,8 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
+     * @deprecated
+     *
      * @param Model\DataObject\AbstractObject $object
      * @param mixed $params
      *
@@ -516,25 +516,21 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                 $wsDataItem->value = [];
                 $wsDataItem->type = $item->getType();
 
-                try {
-                    $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-                } catch (\Exception $e) {
-                    continue;
-                }
+                if ($collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
+                    foreach ($collectionDef->getFieldDefinitions() as $fd) {
+                        $el = new Webservice\Data\DataObject\Element();
+                        $el->name = $fd->getName();
+                        $el->type = $fd->getFieldType();
+                        $el->value = $fd->getForWebserviceExport($item, $params);
+                        if ($el->value == null && self::$dropNullValues) {
+                            continue;
+                        }
 
-                foreach ($collectionDef->getFieldDefinitions() as $fd) {
-                    $el = new Webservice\Data\DataObject\Element();
-                    $el->name = $fd->getName();
-                    $el->type = $fd->getFieldType();
-                    $el->value = $fd->getForWebserviceExport($item, $params);
-                    if ($el->value == null && self::$dropNullValues) {
-                        continue;
+                        $wsDataItem->value[] = $el;
                     }
 
-                    $wsDataItem->value[] = $el;
+                    $wsData[] = $wsDataItem;
                 }
-
-                $wsData[] = $wsDataItem;
             }
         }
 
@@ -542,10 +538,12 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
+     * @deprecated
+     *
      * @param mixed $data
-     * @param null $relatedObject
+     * @param Model\Element\AbstractElement $relatedObject
      * @param mixed $params
-     * @param null $idMapper
+     * @param Model\Webservice\IdMapperInterface|null $idMapper
      *
      * @return mixed
      *
@@ -615,8 +613,8 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $object
-     * @param $value
+     * @param DataObject\Concrete $object
+     * @param Objectbrick|null $value
      * @param array $params
      *
      * @return mixed
@@ -631,7 +629,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $data
+     * @param Objectbrick|null $data
      *
      * @return array
      */
@@ -646,16 +644,12 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                     continue;
                 }
 
-                try {
-                    $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-                } catch (\Exception $e) {
-                    continue;
-                }
-
-                foreach ($collectionDef->getFieldDefinitions() as $fd) {
-                    $key = $fd->getName();
-                    $getter = 'get' . ucfirst($key);
-                    $dependencies = array_merge($dependencies, $fd->resolveDependencies($item->$getter()));
+                if ($collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
+                    foreach ($collectionDef->getFieldDefinitions() as $fd) {
+                        $key = $fd->getName();
+                        $getter = 'get' . ucfirst($key);
+                        $dependencies = array_merge($dependencies, $fd->resolveDependencies($item->$getter()));
+                    }
                 }
             }
         }
@@ -682,16 +676,12 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                     continue;
                 }
 
-                try {
-                    $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-                } catch (\Exception $e) {
-                    continue;
-                }
-
-                foreach ($collectionDef->getFieldDefinitions(['suppressEnrichment' => true]) as $fd) {
-                    $key = $fd->getName();
-                    $getter = 'get' . ucfirst($key);
-                    $tags = $fd->getCacheTags($item->$getter(), $tags);
+                if ($collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
+                    foreach ($collectionDef->getFieldDefinitions(['suppressEnrichment' => true]) as $fd) {
+                        $key = $fd->getName();
+                        $getter = 'get' . ucfirst($key);
+                        $tags = $fd->getCacheTags($item->$getter(), $tags);
+                    }
                 }
             }
         }
@@ -700,7 +690,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $class
+     * @param DataObject\ClassDefinition|DataObject\Objectbrick\Definition|DataObject\Fieldcollection\Definition $class
      *
      * @return string
      */
@@ -755,41 +745,41 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
             if ($data instanceof DataObject\Objectbrick) {
                 $validationExceptions = [];
 
-                $items = $data->getItems();
-                foreach ($items as $item) {
-                    if ($item->getDoDelete()) {
-                        continue;
-                    }
+                $allowedTypes = $this->getAllowedTypes();
+                foreach ($allowedTypes as $allowedType) {
+                    $getter = 'get' . ucfirst($allowedType);
+                    /** @var DataObject\Objectbrick\Data\AbstractData $item */
+                    $item = $data->$getter();
 
-                    if (!$item instanceof DataObject\Objectbrick\Data\AbstractData) {
-                        continue;
-                    }
+                    if ($item instanceof DataObject\Objectbrick\Data\AbstractData) {
+                        if ($item->getDoDelete()) {
+                            continue;
+                        }
 
-                    try {
-                        $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-                    } catch (\Exception $e) {
-                        continue;
-                    }
+                        if (!$collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
+                            continue;
+                        }
 
-                    //needed when new brick is added but not saved yet - then validity check fails.
-                    if (!$item->getFieldname()) {
-                        $item->setFieldname($data->getFieldname());
-                    }
+                        //needed when new brick is added but not saved yet - then validity check fails.
+                        if (!$item->getFieldname()) {
+                            $item->setFieldname($data->getFieldname());
+                        }
 
-                    foreach ($collectionDef->getFieldDefinitions() as $fd) {
-                        try {
-                            $key = $fd->getName();
-                            $getter = 'get' . ucfirst($key);
-                            $fd->checkValidity($item->$getter());
-                        } catch (Model\Element\ValidationException $ve) {
-                            $ve->addContext($this->getName());
-                            $validationExceptions[] = $ve;
+                        foreach ($collectionDef->getFieldDefinitions() as $fd) {
+                            try {
+                                $key = $fd->getName();
+                                $getter = 'get' . ucfirst($key);
+                                $fd->checkValidity($item->$getter());
+                            } catch (Model\Element\ValidationException $ve) {
+                                $ve->addContext($this->getName());
+                                $validationExceptions[] = $ve;
+                            }
                         }
                     }
                 }
 
                 if ($validationExceptions) {
-                    $aggregatedExceptions = new Model\Element\ValidationException();
+                    $aggregatedExceptions = new Model\Element\ValidationException('invalid brick ' . $this->getName());
                     $aggregatedExceptions->setSubItems($validationExceptions);
                     throw $aggregatedExceptions;
                 }
@@ -811,12 +801,12 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
 
     /**
      * @param $item
-     * @param $key
-     * @param $fielddefinition
-     * @param $level
-     * @param $baseObject
-     * @param $getter
-     * @param $params
+     * @param string $key
+     * @param Data $fielddefinition
+     * @param int $level
+     * @param DataObject\Concrete $baseObject
+     * @param string $getter
+     * @param array $params
      *
      * @return mixed
      */
@@ -831,8 +821,8 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
 
     /**
      * @param $data
-     * @param $getter
-     * @param $params
+     * @param string $getter
+     * @param array $params
      * @param int $level
      *
      * @return array
@@ -852,9 +842,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
             return null;
         }
 
-        try {
-            $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-        } catch (\Exception $e) {
+        if (!$collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
             return null;
         }
 
@@ -893,7 +881,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
 
     /** See parent class.
      * @param mixed $data
-     * @param null $object
+     * @param DataObject\Concrete|null $object
      * @param mixed $params
      *
      * @return array|null
@@ -918,12 +906,14 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
         return $editmodeData;
     }
 
-    /** See parent class.
+    /**
+     * See parent class.
+     *
      * @param $data
-     * @param null $object
+     * @param DataObject\Concrete|null $object
      * @param mixed $params
      *
-     * @return null|\Pimcore\Date
+     * @return mixed
      */
     public function getDiffDataFromEditmode($data, $object = null, $params = [])
     {
@@ -968,7 +958,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /** True if change is allowed in edit mode.
-     * @param string $object
+     * @param DataObject\Concrete $object
      * @param mixed $params
      *
      * @return bool
@@ -1006,9 +996,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
                     continue;
                 }
 
-                try {
-                    $collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType());
-                } catch (\Exception $e) {
+                if (!$collectionDef = DataObject\Objectbrick\Definition::getByKey($item->getType())) {
                     continue;
                 }
 
@@ -1026,7 +1014,7 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param DataObject\ClassDefinition\Data $masterDefinition
+     * @param DataObject\ClassDefinition\Data\Objectbricks $masterDefinition
      */
     public function synchronizeWithMasterDefinition(DataObject\ClassDefinition\Data $masterDefinition)
     {
@@ -1037,21 +1025,14 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     /**
      * This method is called in DataObject\ClassDefinition::save() and is used to create the database table for the localized data
      *
-     * @param $class
+     * @param DataObject\ClassDefinition $class
      * @param array $params
      */
     public function classSaved($class, $params = [])
     {
         if (is_array($this->allowedTypes)) {
             foreach ($this->allowedTypes as $allowedType) {
-                $definition = null;
-                try {
-                    $definition = DataObject\Objectbrick\Definition::getByKey($allowedType);
-                } catch (\Exception $e) {
-                    Logger::info("Unknown allowed type [ $allowedType ] ignored.");
-                }
-
-                //TODO: Shouldn't this moved inside the try block?
+                $definition = DataObject\Objectbrick\Definition::getByKey($allowedType);
                 if ($definition) {
                     $definition->getDao()->createUpdateTable($class);
                     $fieldDefinition = $definition->getFieldDefinitions();
@@ -1072,20 +1053,16 @@ class Objectbricks extends Data implements CustomResourcePersistingInterface
     }
 
     /**
-     * @param $container
-     * @param array $list
+     * @param DataObject\ClassDefinition\Data[] $container
+     * @param CalculatedValue[] $list
      */
     public static function collectCalculatedValueItems($container, &$list = [])
     {
         if (is_array($container)) {
-            /** @var $childDef DataObject\ClassDefinition\Data */
+            /** @var DataObject\ClassDefinition\Data $childDef */
             foreach ($container as $childDef) {
                 if ($childDef instanceof Model\DataObject\ClassDefinition\Data\CalculatedValue) {
                     $list[] = $childDef;
-                } else {
-                    if (method_exists($childDef, 'getFieldDefinitions')) {
-                        self::collectCalculatedValueItems($childDef->getFieldDefinitions(), $list);
-                    }
                 }
             }
         }

@@ -17,12 +17,13 @@ namespace Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\ProductList;
 use Monolog\Logger;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Exception\InvalidConfigException;
 use Pimcore\Bundle\EcommerceFrameworkBundle\FilterService\FilterType\Findologic\SelectCategory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IConfig;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\ConfigInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\FindologicConfigInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\AbstractCategory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IIndexable;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\IndexableInterface;
 use Zend\Paginator\Adapter\AdapterInterface;
 
-class DefaultFindologic implements IProductList
+class DefaultFindologic implements ProductListInterface
 {
     /**
      * @var string
@@ -40,7 +41,7 @@ class DefaultFindologic implements IProductList
     protected $revision = '0.1';
 
     /**
-     * @var IIndexable[]
+     * @var IndexableInterface[]
      */
     protected $products = null;
 
@@ -50,7 +51,7 @@ class DefaultFindologic implements IProductList
     protected $tenantName;
 
     /**
-     * @var \Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\IFindologicConfig
+     * @var FindologicConfigInterface
      */
     protected $tenantConfig;
 
@@ -62,7 +63,7 @@ class DefaultFindologic implements IProductList
     /**
      * @var string
      */
-    protected $variantMode = IProductList::VARIANT_MODE_INCLUDE;
+    protected $variantMode = ProductListInterface::VARIANT_MODE_INCLUDE;
 
     /**
      * @var int
@@ -102,7 +103,7 @@ class DefaultFindologic implements IProductList
     protected $conditions = [];
 
     /**
-     * @var string[]
+     * @var array
      */
     protected $queryConditions = [];
 
@@ -142,9 +143,9 @@ class DefaultFindologic implements IProductList
     protected $timeout = 3;
 
     /**
-     * @param IConfig $tenantConfig
+     * @param ConfigInterface $tenantConfig
      */
-    public function __construct(IConfig $tenantConfig)
+    public function __construct(ConfigInterface $tenantConfig)
     {
         $this->tenantName = $tenantConfig->getTenantName();
         $this->tenantConfig = $tenantConfig;
@@ -195,7 +196,7 @@ class DefaultFindologic implements IProductList
      * Fieldname is optional but highly recommended - needed for resetting condition based on fieldname
      * and exclude functionality in group by results
      *
-     * @param $condition
+     * @param string $condition
      * @param string $fieldname
      */
     public function addQueryCondition($condition, $fieldname = '')
@@ -207,9 +208,7 @@ class DefaultFindologic implements IProductList
     /**
      * Reset query condition for fieldname
      *
-     * @param $fieldname
-     *
-     * @return mixed
+     * @param string $fieldname
      */
     public function resetQueryCondition($fieldname)
     {
@@ -285,7 +284,7 @@ class DefaultFindologic implements IProductList
     }
 
     /**
-     * @param $orderKey string | array  - either single field name, or array of field names or array of arrays (field name, direction)
+     * @param string|array $orderKey either single field name, or array of field names or array of arrays (field name, direction)
      */
     public function setOrderKey($orderKey)
     {
@@ -347,7 +346,7 @@ class DefaultFindologic implements IProductList
     }
 
     /**
-     * @return IIndexable[]
+     * @return IndexableInterface[]
      */
     public function load()
     {
@@ -601,7 +600,7 @@ class DefaultFindologic implements IProductList
     /**
      * loads group by values based on relation fieldname either from local variable if prepared or directly from product index
      *
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded => set to false for and-conditions
      *
@@ -615,7 +614,7 @@ class DefaultFindologic implements IProductList
     }
 
     /**
-     * @param      $fieldname
+     * @param string $fieldname
      * @param bool $countValues
      * @param bool $fieldnameShouldBeExcluded
      *
@@ -716,9 +715,6 @@ class DefaultFindologic implements IProductList
         return $relations;
     }
 
-    /**
-     * @return IIndexable[]
-     */
     protected function doLoadGroupByValues()
     {
         // init

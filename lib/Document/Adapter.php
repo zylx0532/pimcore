@@ -24,7 +24,7 @@ abstract class Adapter
     protected $tmpFiles = [];
 
     /**
-     * @param $path
+     * @param string $path
      *
      * @return string
      */
@@ -58,4 +58,8 @@ abstract class Adapter
     {
         $this->removeTmpFiles();
     }
+
+    abstract public function load($path);
+
+    abstract public function saveImage($path, $page = 1, $resolution = 200);
 }

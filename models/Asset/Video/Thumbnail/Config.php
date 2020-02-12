@@ -81,7 +81,7 @@ class Config extends Model\AbstractModel
     public $creationDate;
 
     /**
-     * @param $name
+     * @param string $name
      *
      * @return null|Config
      */
@@ -98,7 +98,6 @@ class Config extends Model\AbstractModel
             try {
                 $thumbnail = new self();
                 $thumbnail->getDao()->getByName($name);
-
                 \Pimcore\Cache\Runtime::set($cacheKey, $thumbnail);
             } catch (\Exception $e) {
                 return null;
@@ -132,8 +131,8 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param  $name
-     * @param  $parameters
+     * @param string $name
+     * @param array $parameters
      *
      * @return bool
      */
@@ -148,9 +147,9 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param $position
-     * @param $name
-     * @param $parameters
+     * @param int $position
+     * @param string $name
+     * @param array $parameters
      *
      * @return bool
      */
@@ -170,7 +169,7 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param $description
+     * @param string $description
      *
      * @return $this
      */
@@ -190,7 +189,7 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param $items
+     * @param array $items
      *
      * @return $this
      */
@@ -210,7 +209,7 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param $name
+     * @param string $name
      *
      * @return $this
      */
@@ -230,7 +229,7 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param $audioBitrate
+     * @param int $audioBitrate
      *
      * @return $this
      */
@@ -250,7 +249,7 @@ class Config extends Model\AbstractModel
     }
 
     /**
-     * @param $videoBitrate
+     * @param int $videoBitrate
      *
      * @return $this
      */

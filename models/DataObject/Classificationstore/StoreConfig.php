@@ -48,34 +48,34 @@ class StoreConfig extends Model\AbstractModel
     /**
      * @param int $id
      *
-     * @return Model\DataObject\Classificationstore\StoreConfig
+     * @return self|null
      */
     public static function getById($id)
     {
         try {
             $config = new self();
-            $config->setId(intval($id));
-            $config->getDao()->getById();
+            $config->getDao()->getById(intval($id));
 
             return $config;
         } catch (\Exception $e) {
+            return null;
         }
     }
 
     /**
-     * @param $name
+     * @param string $name
      *
-     * @return StoreConfig
+     * @return self|null
      */
     public static function getByName($name)
     {
         try {
             $config = new self();
-            $config->setName($name);
-            $config->getDao()->getByName();
+            $config->getDao()->getByName($name);
 
             return $config;
         } catch (\Exception $e) {
+            return null;
         }
     }
 
@@ -110,16 +110,20 @@ class StoreConfig extends Model\AbstractModel
         return $this->name;
     }
 
-    /** Returns the description.
-     * @return mixed
+    /**
+     * Returns the description.
+     *
+     * @return string
      */
     public function getDescription()
     {
         return $this->description;
     }
 
-    /** Sets the description.
-     * @param $description
+    /**
+     * Sets the description.
+     *
+     * @param string $description
      *
      * @return Model\DataObject\Classificationstore\StoreConfig
      */
@@ -136,7 +140,7 @@ class StoreConfig extends Model\AbstractModel
     public function delete()
     {
         \Pimcore::getEventDispatcher()->dispatch(DataObjectClassificationStoreEvents::STORE_CONFIG_PRE_DELETE, new StoreConfigEvent($this));
-        parent::delete();
+        $this->getDao()->delete();
         \Pimcore::getEventDispatcher()->dispatch(DataObjectClassificationStoreEvents::STORE_CONFIG_POST_DELETE, new StoreConfigEvent($this));
     }
 
@@ -154,7 +158,7 @@ class StoreConfig extends Model\AbstractModel
             \Pimcore::getEventDispatcher()->dispatch(DataObjectClassificationStoreEvents::STORE_CONFIG_PRE_ADD, new StoreConfigEvent($this));
         }
 
-        $model = parent::save();
+        $model = $this->getDao()->save();
 
         if ($isUpdate) {
             \Pimcore::getEventDispatcher()->dispatch(DataObjectClassificationStoreEvents::STORE_CONFIG_POST_UPDATE, new StoreConfigEvent($this));
